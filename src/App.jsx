@@ -161,7 +161,7 @@ export default function App() {
     <div className="flex h-screen w-screen overflow-hidden bg-slate-900 text-white">
       {/* ── Sidebar ── */}
       <aside className="w-64 flex-shrink-0 flex flex-col gap-5 p-4 bg-slate-800 border-r border-slate-700 overflow-y-auto">
-        <img src={logoSmall} alt="ZipMap" className="h-10 w-auto" />
+        <img src={logoSmall} alt="ZipMap" className="h-10 w-auto self-start" />
 
         <DropZone onFile={handleFile} fileName={fileName} error={error} />
 
