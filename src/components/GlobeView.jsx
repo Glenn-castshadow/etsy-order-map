@@ -36,10 +36,14 @@ export default function GlobeView({ data, origin, showSpikes = true, showArcs = 
     if (!g) return;
     g.pointOfView({ lat: 38, lng: -96, altitude: 2.1 }, 900);
     const ctrl = g.controls();
-    ctrl.autoRotate      = true;
-    ctrl.autoRotateSpeed = 0.35;
-    ctrl.enableDamping   = true;
-    ctrl.dampingFactor   = 0.1;
+    ctrl.autoRotate        = true;
+    ctrl.autoRotateSpeed   = 0.35;
+    ctrl.enableDamping     = true;
+    ctrl.dampingFactor     = 0.25;  // more friction → stops quickly, easier to aim
+    ctrl.rotateSpeed       = 0.6;   // slower rotation → precise angle control
+    ctrl.enablePan         = true;  // right-drag / two-finger drag pans camera target
+    ctrl.panSpeed          = 1.2;
+    ctrl.screenSpacePanning = true; // pan in screen space (feels like a map)
   }
 
   // Stop auto-rotate the moment the user grabs the globe
