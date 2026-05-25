@@ -83,7 +83,7 @@ class BlobHeatLayer extends L.Layer {
 
     for (const { lat, lng, weight } of this._data) {
       const pt = map.latLngToContainerPoint(L.latLng(lat, lng));
-      const r  = Math.round(14 + weight * 22); // blob radius 14–36 px
+      const r  = Math.round(21 + weight * 33); // blob radius 21–54 px (1.5× original)
 
       const g = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r);
       g.addColorStop(0,    grad.center(weight));
