@@ -59,12 +59,6 @@ export default function ColumnMapper({ headers, rows, zipIdx, countIdx, confiden
         )}
 
         <div className="rounded-lg bg-slate-700/60 p-2 flex flex-col gap-1">
-          <Choice
-            label="Sales count"
-            hint="Each order counts once"
-            active={countIdx < 0}
-            onClick={() => onChange(zipIdx, -1)}
-          />
           {itemsIdx >= 0 && (
             <Choice
               label="Items shipped"
