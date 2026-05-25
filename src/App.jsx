@@ -9,6 +9,7 @@ import DropZone from './components/DropZone.jsx';
 import ColumnMapper from './components/ColumnMapper.jsx';
 import DateRangeFilter from './components/DateRangeFilter.jsx';
 import StyleSwitcher from './components/StyleSwitcher.jsx';
+import OriginInput from './components/OriginInput.jsx';
 import Legend from './components/Legend.jsx';
 import ExportButtons from './components/ExportButtons.jsx';
 import { sniffCsv, aggregateRows, parseIsoDate } from './utils/parseCsv.js';
@@ -18,15 +19,24 @@ const zipLookup = new Map(
 );
 
 export default function App() {
-  const [rawCsv, setRawCsv]           = useState(null);
-  const [csvData, setCsvData]         = useState([]);
+  const [rawCsv, setRawCsv]               = useState(null);
+  const [csvData, setCsvData]             = useState([]);
   const [selectedRange, setSelectedRange] = useState({ from: '', to: '' });
   const [activeStyleId, setActiveStyleId] = useState(styles[0].id);
-  const [fileName, setFileName]       = useState(null);
-  const [error, setError]             = useState(null);
+  const [fileName, setFileName]           = useState(null);
+  const [error, setError]                 = useState(null);
+  const [originZip, setOriginZip]         = useState(
+    () => localStorage.getItem('zipmap-origin') ?? ''
+  );
   const mapRef = useRef(null);
 
-  // Full date span present in the file — null when no date column detected
+  // Resolved origin coords for the Arcs style
+  const originEntry = useMemo(() => {
+    if (originZip.length < 5) return null;
+    return zipLookup.get(originZip.padStart(5, '0')) ?? null;
+  }, [originZip]);
+
+  // Full date span in the loaded file
   const dateRange = useMemo(() => {
     if (!rawCsv || rawCsv.dateIdx < 0) return null;
     const dates = rawCsv.rows
@@ -54,8 +64,7 @@ export default function App() {
   function reAggregate(sniff, from, to) {
     return aggregateRows(
       sniff.rows, sniff.zipIdx, sniff.countIdx,
-      sniff.dateIdx,
-      from || null, to || null,
+      sniff.dateIdx, from || null, to || null,
     );
   }
 
@@ -87,7 +96,15 @@ export default function App() {
     if (rawCsv) setCsvData(reAggregate(rawCsv, from, to));
   }
 
+  function handleOriginZip(zip) {
+    setOriginZip(zip);
+    if (zip.length === 5) localStorage.setItem('zipmap-origin', zip);
+    else localStorage.removeItem('zipmap-origin');
+  }
+
   const ActiveStyle = styles.find(s => s.id === activeStyleId)?.component;
+  const arcsActive  = activeStyleId === 'arcs';
+  const needsOrigin = arcsActive && heatPoints.length > 0 && !originEntry;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-900 text-white">
@@ -127,6 +144,14 @@ export default function App() {
           onChange={setActiveStyleId}
         />
 
+        {arcsActive && (
+          <OriginInput
+            value={originZip}
+            onChange={handleOriginZip}
+            isValid={!!originEntry}
+          />
+        )}
+
         {heatPoints.length > 0 && (
           <Legend matched={matched} unmatched={unmatched} total={total} />
         )}
@@ -156,15 +181,26 @@ export default function App() {
             crossOrigin="anonymous"
           />
           {ActiveStyle && heatPoints.length > 0 && (
-            <ActiveStyle data={heatPoints} />
+            <ActiveStyle data={heatPoints} origin={originEntry} />
           )}
         </MapContainer>
 
+        {/* Empty state */}
         {!heatPoints.length && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="bg-slate-900/80 rounded-xl px-6 py-4 text-center">
               <p className="text-slate-300 text-sm">Upload a CSV to see your heatmap</p>
               <p className="text-slate-500 text-xs mt-1">zip column · or · zip, count columns</p>
+            </div>
+          </div>
+        )}
+
+        {/* Arcs hint when origin ZIP not yet set */}
+        {needsOrigin && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-slate-900/80 rounded-xl px-6 py-4 text-center">
+              <p className="text-slate-300 text-sm">Enter your shop ZIP in the sidebar</p>
+              <p className="text-slate-500 text-xs mt-1">to draw shipping arcs from your location</p>
             </div>
           </div>
         )}
