@@ -174,8 +174,9 @@ export default function App() {
         {!fileName && (
           <button
             onClick={handleSample}
-            className="text-xs text-slate-400 hover:text-blue-400 transition-colors text-left -mt-3"
+            className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-blue-400 transition-colors text-left -mt-3"
           >
+            <span className="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse flex-shrink-0" />
             Try with sample data →
           </button>
         )}
