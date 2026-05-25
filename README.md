@@ -1,4 +1,4 @@
-# Etsy Order Map v0.2.0
+# Etsy Order Map v0.3.0
 
 A desktop app that maps Etsy customer orders onto a US ZIP code heatmap. Drop in your Etsy order CSV export — column names are auto-detected — and instantly see where your customers are concentrated.
 
@@ -17,6 +17,9 @@ Built with React + Vite inside a Tauri v2 desktop wrapper. Runs on Windows (macO
   - **Bubbles** — circle markers sized and colored by order weight
   - **Arcs** — curved bezier shipping paths from your shop ZIP to each customer location, color-coded by volume
   - **Treasure** — scattered coin piles that grow in size with order count
+- **Stat cards** — KPI bar above the map showing Total Orders, Unique ZIPs, and States Reached
+- **Top States panel** — floating overlay ranking the top 5 states by order share with percentage breakdown
+- **Insights** — auto-generated sentences summarizing your top state, top ZIP, and geographic reach
 - **Export** — save the current map view as PNG or JPEG
 - **42,354 US ZIP centroids** bundled — no network call needed for lookups
 - **Tauri desktop app** — native window, ships as a standalone `.exe` installer
@@ -109,7 +112,9 @@ src/
 │   ├── DateRangeFilter.jsx   from/to date filter
 │   ├── StyleSwitcher.jsx     style tab buttons
 │   ├── OriginInput.jsx       ship-from ZIP for Arcs style
-│   ├── Legend.jsx            match counts + gradient bar
+│   ├── Legend.jsx            density gradient bar + unrecognised ZIP warning
+│   ├── StatCards.jsx         KPI bar — Total Orders, Unique ZIPs, States Reached
+│   ├── TopStatesPanel.jsx    floating overlay — top 5 states + auto insights
 │   └── ExportButtons.jsx     PNG / JPEG download
 ├── utils/
 │   ├── parseCsv.js           PapaParse wrapper — sniff + aggregate
@@ -144,6 +149,12 @@ The StyleSwitcher and App wire up automatically.
 ---
 
 ## Changelog
+
+### v0.3.0
+- Added **Stat cards** — KPI bar above the map (Total Orders, Unique ZIPs, States Reached) with colour-coded accents; hidden until a CSV is loaded
+- Added **Top States panel** — floating bottom-right overlay ranking the top 5 states by order share with percentage breakdown
+- Added **Insights** — auto-generated summary sentences (leading state %, top ZIP with order count, states spanned)
+- Simplified **Legend** — stripped to density gradient bar + unrecognised-ZIP count; stats moved to the KPI cards
 
 ### v0.2.0
 - Added **Arcs** map style — quadratic bezier shipping paths from shop ZIP to customers
