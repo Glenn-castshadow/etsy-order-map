@@ -1,9 +1,6 @@
 export default function StyleSwitcher({ styles, active, onChange }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-        Map Style
-      </span>
       <div className="flex flex-wrap gap-2">
         {styles.map(s => (
           <button

@@ -1,9 +1,6 @@
 export default function BaseMapToggle({ active, onChange }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-        Base Map
-      </span>
       <div className="flex gap-1.5">
         <Btn label="Flat" active={active === 'flat'} onClick={() => onChange('flat')} />
         <Btn label="🌐 Globe" active={active === 'globe'} onClick={() => onChange('globe')} />

@@ -3,19 +3,6 @@ export default function DateRangeFilter({ min, max, from, to, onChange }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-          Date Range
-        </span>
-        {isFiltered && (
-          <button
-            onClick={() => onChange('', '')}
-            className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
-          >
-            Reset
-          </button>
-        )}
-      </div>
       <div className="rounded-lg bg-slate-700/60 p-3 flex flex-col gap-2">
         <DateRow
           label="From"
@@ -32,9 +19,17 @@ export default function DateRangeFilter({ min, max, from, to, onChange }) {
           onChange={v => onChange(from, v)}
         />
       </div>
-      <p className="text-xs text-slate-500">
-        Data spans {min} — {max}
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-slate-500">Data spans {min} — {max}</p>
+        {isFiltered && (
+          <button
+            onClick={() => onChange('', '')}
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            Reset
+          </button>
+        )}
+      </div>
     </div>
   );
 }

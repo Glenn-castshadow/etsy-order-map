@@ -11,9 +11,6 @@ export default function GlobeLayerControls({
     <div className="flex flex-col gap-3">
       {/* ── Layer toggles ── */}
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-          Globe Layers
-        </span>
         <div className="flex gap-1.5">
           <Toggle label="Spikes" active={showSpikes} onClick={() => onSpikes(!showSpikes)} />
           <Toggle
@@ -34,7 +31,7 @@ export default function GlobeLayerControls({
 
       {/* ── Gradient picker — always visible ── */}
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+        <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">
           Color Scheme
         </span>
         <div className="grid grid-cols-2 gap-1.5">

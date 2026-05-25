@@ -3,9 +3,6 @@ export default function OriginInput({ value, onChange, isValid }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-        Ship From
-      </span>
       <input
         type="text"
         inputMode="numeric"

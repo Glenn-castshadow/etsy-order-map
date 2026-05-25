@@ -13,9 +13,6 @@ const HINTS = {
 export default function ScaleSwitcher({ active, onChange }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-        Color Scale
-      </span>
       <div className="flex gap-1.5">
         {SCALES.map(({ id, label }) => (
           <button

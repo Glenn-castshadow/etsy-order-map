@@ -1,9 +1,6 @@
 export default function Legend({ unmatched }) {
   return (
     <div className="flex flex-col gap-3">
-      <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-        Density
-      </span>
       <div className="flex flex-col gap-1">
         <div
           className="h-2.5 w-full rounded"

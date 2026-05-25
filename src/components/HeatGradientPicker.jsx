@@ -3,9 +3,6 @@ import { heatGradients } from '../mapStyles/heatGradients.js';
 export default function HeatGradientPicker({ active, onChange }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-        Color Scheme
-      </span>
       <div className="grid grid-cols-2 gap-1.5">
         {heatGradients.map(g => {
           const isActive = g.id === active;

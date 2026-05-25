@@ -17,9 +17,6 @@ export default function ExportButtons({ mapRef }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-        Export
-      </span>
       <div className="flex gap-2">
         <ExportBtn
           label="PNG"

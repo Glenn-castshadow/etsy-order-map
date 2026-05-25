@@ -19,6 +19,7 @@ import BaseMapToggle from './components/BaseMapToggle.jsx';
 import HeatGradientPicker from './components/HeatGradientPicker.jsx';
 import GlobeLayerControls from './components/GlobeLayerControls.jsx';
 import GlobeView from './components/GlobeView.jsx';
+import CollapsibleSection from './components/CollapsibleSection.jsx';
 import { sniffCsv, aggregateRows, parseIsoDate } from './utils/parseCsv.js';
 import logoSmall from '../images/logo_small.png';
 import sampleCsv from './data/sample-orders.csv?raw';
@@ -173,90 +174,122 @@ export default function App() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-900 text-white">
       {/* ── Sidebar ── */}
-      <aside className="w-64 flex-shrink-0 flex flex-col gap-5 p-4 bg-[#061526] border-r border-slate-700 overflow-y-auto">
-        <img src={logoSmall} alt="ZipMap" className="h-20 w-auto self-start" />
+      <aside className="w-64 flex-shrink-0 flex flex-col gap-3 p-4 bg-[#061526] border-r border-slate-700 overflow-y-auto">
+        <img src={logoSmall} alt="ZipMap" className="h-20 w-auto self-start mb-1" />
 
-        <DropZone onFile={handleFile} fileName={fileName} error={error} />
+        {/* ── Import CSV ── */}
+        <CollapsibleSection title="Import CSV">
+          <div className="flex flex-col gap-2">
+            <DropZone onFile={handleFile} fileName={fileName} error={error} />
+            {!fileName && (
+              <button
+                onClick={handleSample}
+                className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-blue-400 transition-colors text-left"
+              >
+                <span className="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse flex-shrink-0" />
+                Try with sample data →
+              </button>
+            )}
+          </div>
+        </CollapsibleSection>
 
-        {!fileName && (
-          <button
-            onClick={handleSample}
-            className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-blue-400 transition-colors text-left -mt-3"
-          >
-            <span className="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse flex-shrink-0" />
-            Try with sample data →
-          </button>
-        )}
-
+        {/* ── Columns ── */}
         {rawCsv?.headers && (
-          <ColumnMapper
-            headers={rawCsv.headers}
-            rows={rawCsv.rows}
-            zipIdx={rawCsv.zipIdx}
-            countIdx={rawCsv.countIdx}
-            confidence={rawCsv.confidence}
-            onChange={handleColumnChange}
-          />
+          <CollapsibleSection title="Columns">
+            <ColumnMapper
+              headers={rawCsv.headers}
+              rows={rawCsv.rows}
+              zipIdx={rawCsv.zipIdx}
+              countIdx={rawCsv.countIdx}
+              confidence={rawCsv.confidence}
+              onChange={handleColumnChange}
+            />
+          </CollapsibleSection>
         )}
 
+        {/* ── Date Range ── */}
         {dateRange && (
-          <DateRangeFilter
-            min={dateRange.min}
-            max={dateRange.max}
-            from={selectedRange.from}
-            to={selectedRange.to}
-            onChange={handleDateRange}
-          />
+          <CollapsibleSection title="Date Range">
+            <DateRangeFilter
+              min={dateRange.min}
+              max={dateRange.max}
+              from={selectedRange.from}
+              to={selectedRange.to}
+              onChange={handleDateRange}
+            />
+          </CollapsibleSection>
         )}
 
-        <BaseMapToggle active={baseMap} onChange={setBaseMap} />
+        {/* ── Base Map ── */}
+        <CollapsibleSection title="Base Map">
+          <BaseMapToggle active={baseMap} onChange={setBaseMap} />
+        </CollapsibleSection>
 
+        {/* ── Map Style (flat only) ── */}
         {baseMap === 'flat' && (
-          <StyleSwitcher
-            styles={styles}
-            active={activeStyleId}
-            onChange={setActiveStyleId}
-          />
+          <CollapsibleSection title="Map Style">
+            <div className="flex flex-col gap-2">
+              <StyleSwitcher
+                styles={styles}
+                active={activeStyleId}
+                onChange={setActiveStyleId}
+              />
+              {activeStyleId === 'heatmap' && heatPoints.length > 0 && (
+                <HeatGradientPicker
+                  active={heatGradientId}
+                  onChange={setHeatGradientId}
+                />
+              )}
+            </div>
+          </CollapsibleSection>
         )}
 
-        {baseMap === 'flat' && activeStyleId === 'heatmap' && heatPoints.length > 0 && (
-          <HeatGradientPicker
-            active={heatGradientId}
-            onChange={setHeatGradientId}
-          />
-        )}
-
+        {/* ── Globe Layers (globe only) ── */}
         {baseMap === 'globe' && heatPoints.length > 0 && (
-          <GlobeLayerControls
-            showSpikes={globeShowSpikes}     onSpikes={setGlobeShowSpikes}
-            showArcs={globeShowArcs}         onArcs={setGlobeShowArcs}
-            arcsAnimated={globeArcsAnimated} onArcsAnimated={setGlobeArcsAnimated}
-            hasOrigin={!!originEntry}
-            gradientId={globeGradientId}     onGradient={setGlobeGradientId}
-          />
+          <CollapsibleSection title="Globe Layers">
+            <GlobeLayerControls
+              showSpikes={globeShowSpikes}     onSpikes={setGlobeShowSpikes}
+              showArcs={globeShowArcs}         onArcs={setGlobeShowArcs}
+              arcsAnimated={globeArcsAnimated} onArcsAnimated={setGlobeArcsAnimated}
+              hasOrigin={!!originEntry}
+              gradientId={globeGradientId}     onGradient={setGlobeGradientId}
+            />
+          </CollapsibleSection>
         )}
 
+        {/* ── Ship From (arcs only) ── */}
         {arcsActive && (
-          <OriginInput
-            value={originZip}
-            onChange={handleOriginZip}
-            isValid={!!originEntry}
-          />
+          <CollapsibleSection title="Ship From">
+            <OriginInput
+              value={originZip}
+              onChange={handleOriginZip}
+              isValid={!!originEntry}
+            />
+          </CollapsibleSection>
         )}
 
+        {/* ── Color Scale ── */}
         {heatPoints.length > 0 && (
-          <ScaleSwitcher active={scaleMode} onChange={setScaleMode} />
+          <CollapsibleSection title="Color Scale" defaultOpen={false}>
+            <ScaleSwitcher active={scaleMode} onChange={setScaleMode} />
+          </CollapsibleSection>
         )}
 
+        {/* ── Legend ── */}
         {heatPoints.length > 0 && (
-          <Legend unmatched={unmatched} />
+          <CollapsibleSection title="Legend" defaultOpen={false}>
+            <Legend unmatched={unmatched} />
+          </CollapsibleSection>
         )}
 
+        {/* ── Export ── */}
         {heatPoints.length > 0 && (
-          <ExportButtons mapRef={mapRef} />
+          <CollapsibleSection title="Export" defaultOpen={false}>
+            <ExportButtons mapRef={mapRef} />
+          </CollapsibleSection>
         )}
 
-        <div className="mt-auto text-xs text-slate-600">
+        <div className="mt-auto pt-2 text-xs text-slate-600">
           {zipLookup.size.toLocaleString()} ZIP codes indexed
         </div>
       </aside>

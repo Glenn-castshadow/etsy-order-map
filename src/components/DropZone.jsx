@@ -33,9 +33,6 @@ export default function DropZone({ onFile, fileName, error }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-        Import CSV
-      </span>
       <div
         role="button"
         tabIndex={0}

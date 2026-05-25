@@ -7,16 +7,11 @@ export default function ColumnMapper({ headers, rows, zipIdx, countIdx, confiden
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-          Columns
+      {confidence === 'high' && (
+        <span className="self-start text-xs font-medium text-emerald-400 bg-emerald-950/50 px-1.5 py-0.5 rounded">
+          Etsy ✓
         </span>
-        {confidence === 'high' && (
-          <span className="text-xs font-medium text-emerald-400 bg-emerald-950/50 px-1.5 py-0.5 rounded">
-            Etsy ✓
-          </span>
-        )}
-      </div>
+      )}
 
       <div className="rounded-lg bg-slate-700/60 p-3 flex flex-col gap-2">
         <ColRow
