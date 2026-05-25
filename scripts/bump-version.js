@@ -27,4 +27,12 @@ const cargo     = fs.readFileSync(cargoPath, 'utf8')
   .replace(/^version = "[\d.]+"/m, `version = "${next}"`);
 fs.writeFileSync(cargoPath, cargo);
 
+// ── README.md ─────────────────────────────────────────────────────────────────
+const readmePath = path.join(root, 'README.md');
+if (fs.existsSync(readmePath)) {
+  const readme = fs.readFileSync(readmePath, 'utf8')
+    .replace(/^(# .+?) v[\d.]+/m, `$1 v${next}`);
+  fs.writeFileSync(readmePath, readme);
+}
+
 process.stdout.write(`version bump: ${current} → ${next}\n`);

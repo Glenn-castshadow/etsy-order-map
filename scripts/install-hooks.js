@@ -25,7 +25,7 @@ const script = `#!/bin/sh
 REPO_ROOT=$(git rev-parse --show-toplevel)
 cd "$REPO_ROOT"
 node scripts/bump-version.js
-git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
+git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml README.md
 git diff --cached --quiet && exit 0
 VERSION=$(node -p "require('./package.json').version")
 git commit --no-verify -m "Bump version to $VERSION"
