@@ -1,8 +1,28 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import { isInTauri, openNativeCsv } from '../utils/openFile.js';
 
 export default function DropZone({ onFile, fileName, error }) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
+
+  // Listen for File → Open CSV menu event (Tauri only)
+  useEffect(() => {
+    if (!isInTauri()) return;
+    let unlisten;
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen('menu-open-file', () => handleOpen()).then(fn => { unlisten = fn; });
+    });
+    return () => { unlisten?.(); };
+  }, []);
+
+  async function handleOpen() {
+    if (isInTauri()) {
+      const file = await openNativeCsv();
+      if (file) onFile(file);
+    } else {
+      inputRef.current?.click();
+    }
+  }
 
   function handleDrop(e) {
     e.preventDefault();
@@ -19,8 +39,8 @@ export default function DropZone({ onFile, fileName, error }) {
       <div
         role="button"
         tabIndex={0}
-        onClick={() => inputRef.current?.click()}
-        onKeyDown={e => e.key === 'Enter' && inputRef.current?.click()}
+        onClick={handleOpen}
+        onKeyDown={e => e.key === 'Enter' && handleOpen()}
         onDragOver={e => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
@@ -47,13 +67,18 @@ export default function DropZone({ onFile, fileName, error }) {
         Accepts <code className="text-slate-400">zip</code> or{' '}
         <code className="text-slate-400">zip, count</code> columns
       </p>
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".csv,.txt"
-        className="hidden"
-        onChange={e => { if (e.target.files[0]) onFile(e.target.files[0]); }}
-      />
+
+      {/* Browser fallback only — hidden in Tauri */}
+      {!isInTauri() && (
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".csv,.txt"
+          className="hidden"
+          onChange={e => { if (e.target.files[0]) onFile(e.target.files[0]); }}
+        />
+      )}
+
       {error && (
         <p className="text-xs text-red-400 rounded bg-red-950/40 px-2 py-1">{error}</p>
       )}
