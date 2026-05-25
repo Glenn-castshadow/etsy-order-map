@@ -1,7 +1,14 @@
 import { useRef, useState, useEffect } from 'react';
 import { isInTauri, openNativeCsv } from '../utils/openFile.js';
 
-export default function DropZone({ onFile, fileName, error }) {
+/**
+ * Drop / pick zone for CSV files.
+ *
+ * `onFile(file)` is called once per file — drop several at once and it
+ * fires per-file.  `hasFiles` toggles the prompt text between "Drop a CSV"
+ * and "Add another CSV" so the user knows they're appending, not replacing.
+ */
+export default function DropZone({ onFile, hasFiles = false, error }) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
 
@@ -27,8 +34,9 @@ export default function DropZone({ onFile, fileName, error }) {
   function handleDrop(e) {
     e.preventDefault();
     setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) onFile(file);
+    for (const file of e.dataTransfer.files) {
+      onFile(file);
+    }
   }
 
   return (
@@ -42,23 +50,18 @@ export default function DropZone({ onFile, fileName, error }) {
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         className={[
-          'rounded-lg border-2 border-dashed p-5 text-center cursor-pointer transition-colors select-none',
+          'rounded-lg border-2 border-dashed p-4 text-center cursor-pointer transition-colors select-none',
           dragging
             ? 'border-blue-400 bg-blue-950/40'
             : 'border-slate-600 hover:border-slate-400',
         ].join(' ')}
       >
-        {fileName ? (
-          <>
-            <p className="text-sm font-medium text-slate-200 truncate">{fileName}</p>
-            <p className="text-xs text-slate-500 mt-1">Click or drop to replace</p>
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-slate-400">Drop a CSV here</p>
-            <p className="text-xs text-slate-500 mt-1">or click to browse</p>
-          </>
-        )}
+        <p className="text-sm font-medium text-slate-300">
+          {hasFiles ? '+ Add another CSV' : 'Drop a CSV here'}
+        </p>
+        <p className="text-xs text-slate-500 mt-1">
+          {hasFiles ? 'one or more files' : 'or click to browse'}
+        </p>
       </div>
       <p className="text-xs text-slate-500">
         Accepts <code className="text-slate-400">zip</code> or{' '}
@@ -71,8 +74,12 @@ export default function DropZone({ onFile, fileName, error }) {
           ref={inputRef}
           type="file"
           accept=".csv,.txt"
+          multiple
           className="hidden"
-          onChange={e => { if (e.target.files[0]) onFile(e.target.files[0]); }}
+          onChange={e => {
+            for (const f of e.target.files) onFile(f);
+            e.target.value = ''; // reset so the same file can be re-selected
+          }}
         />
       )}
 

@@ -6,6 +6,7 @@ import './App.css';
 import zipCentroids from './data/zipCentroids.json';
 import { styles } from './mapStyles/index.js';
 import DropZone from './components/DropZone.jsx';
+import FileList from './components/FileList.jsx';
 import ColumnMapper from './components/ColumnMapper.jsx';
 import DateRangeFilter from './components/DateRangeFilter.jsx';
 import StyleSwitcher from './components/StyleSwitcher.jsx';
@@ -35,8 +36,9 @@ for (const { zip, lat, lon, state, city } of zipCentroids) {
 }
 
 export default function App() {
-  const [rawCsv, setRawCsv]               = useState(null);
-  const [csvData, setCsvData]             = useState([]);
+  // csvFiles: array of sniffed CSV files in the import pool.
+  // Each entry: { id, name, headers, rows, zipIdx, countIdx, dateIdx, confidence, kind }
+  const [csvFiles, setCsvFiles]           = useState([]);
   const [paymentsRaw, setPaymentsRaw]     = useState(null); // { headers, rows } for Etsy Payments CSV
   const [selectedRange, setSelectedRange] = useState({ from: '', to: '' });
   const [activeStyleId, setActiveStyleId] = useState(styles[0].id);
@@ -48,7 +50,6 @@ export default function App() {
   const [globeShowOrigin,   setGlobeShowOrigin]   = useState(true);
   const [globeArcsAnimated, setGlobeArcsAnimated] = useState(true);
   const [baseMap, setBaseMap]             = useState('flat');
-  const [fileName, setFileName]           = useState(null);
   const [error, setError]                 = useState(null);
   const [originZip, setOriginZip]         = useState(
     () => localStorage.getItem('zipmap-origin') ?? ''
@@ -71,14 +72,36 @@ export default function App() {
       if (!dates.length) return null;
       return { min: dates[0], max: dates[dates.length - 1] };
     }
-    if (!rawCsv || rawCsv.dateIdx < 0) return null;
-    const dates = rawCsv.rows
-      .map(r => parseIsoDate(r[rawCsv.dateIdx]))
-      .filter(Boolean)
-      .sort();
-    if (!dates.length) return null;
-    return { min: dates[0], max: dates[dates.length - 1] };
-  }, [rawCsv, paymentsRaw]);
+    if (!csvFiles.length) return null;
+    const allDates = [];
+    for (const file of csvFiles) {
+      if (file.dateIdx < 0) continue;
+      for (const row of file.rows) {
+        const d = parseIsoDate(row[file.dateIdx]);
+        if (d) allDates.push(d);
+      }
+    }
+    if (!allDates.length) return null;
+    allDates.sort();
+    return { min: allDates[0], max: allDates[allDates.length - 1] };
+  }, [csvFiles, paymentsRaw]);
+
+  // Combined zip→count across all files, with date filter applied per-file
+  // so each file uses its own dateIdx mapping.
+  const csvData = useMemo(() => {
+    if (!csvFiles.length) return [];
+    const combined = new Map();
+    for (const file of csvFiles) {
+      const aggregated = aggregateRows(
+        file.rows, file.zipIdx, file.countIdx,
+        file.dateIdx, selectedRange.from || null, selectedRange.to || null,
+      );
+      for (const { zip, count } of aggregated) {
+        combined.set(zip, (combined.get(zip) ?? 0) + count);
+      }
+    }
+    return [...combined.entries()].map(([zip, count]) => ({ zip, count }));
+  }, [csvFiles, selectedRange.from, selectedRange.to]);
 
   const payments = useMemo(() => {
     if (!paymentsRaw) return null;
@@ -142,49 +165,58 @@ export default function App() {
     return { topStates, topZip, stateCount: stateCounts.size };
   }, [csvData]);
 
-  function reAggregate(sniff, from, to) {
-    return aggregateRows(
-      sniff.rows, sniff.zipIdx, sniff.countIdx,
-      sniff.dateIdx, from || null, to || null,
-    );
-  }
-
   async function handleFile(file) {
     setError(null);
-    setSelectedRange({ from: '', to: '' });
     try {
       const sniff = await sniffCsv(file);
       if (!sniff.rows.length) throw new Error('No rows found in file.');
+
+      // Etsy Payments CSV switches to the payments dashboard and clears
+      // any order-style files already in the pool.
       if (sniff.kind === 'etsy-payments') {
-        // Payments mode: clear map state, store raw rows for re-aggregation
-        setRawCsv(null);
-        setCsvData([]);
+        setCsvFiles([]);
+        setSelectedRange({ from: '', to: '' });
         setPaymentsRaw({ headers: sniff.headers, rows: sniff.rows });
-        setFileName(file.name);
         return;
       }
-      const parsed = reAggregate(sniff, '', '');
-      if (!parsed.length) throw new Error('No valid ZIP codes found in the detected column.');
-      // Orders mode: clear payments state
+
+      // Sanity-check that at least one valid ZIP would resolve before we
+      // append the file — otherwise the import looks broken.
+      const test = aggregateRows(sniff.rows, sniff.zipIdx, sniff.countIdx);
+      if (!test.length) throw new Error('No valid ZIP codes found in the detected column.');
+
       setPaymentsRaw(null);
-      setRawCsv(sniff);
-      setCsvData(parsed);
-      setFileName(file.name);
+      setCsvFiles(prev => [
+        ...prev,
+        { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, ...sniff },
+      ]);
     } catch (e) {
       setError(e.message ?? 'Failed to parse CSV.');
     }
   }
 
+  function handleRemoveFile(id) {
+    setCsvFiles(prev => prev.filter(f => f.id !== id));
+  }
+
+  // Column-mapper edits propagate to every file whose headers match the
+  // first file's — typical case is several years of the same Etsy export,
+  // so one edit covers them all.  Files with different headers keep their
+  // own auto-detected indices.
   function handleColumnChange(zipIdx, countIdx) {
-    if (!rawCsv) return;
-    const updated = { ...rawCsv, zipIdx, countIdx };
-    setRawCsv(updated);
-    setCsvData(reAggregate(updated, selectedRange.from, selectedRange.to));
+    setCsvFiles(prev => {
+      if (!prev.length) return prev;
+      const firstKey = JSON.stringify(prev[0].headers);
+      return prev.map(f =>
+        JSON.stringify(f.headers) === firstKey
+          ? { ...f, zipIdx, countIdx }
+          : f
+      );
+    });
   }
 
   function handleDateRange(from, to) {
     setSelectedRange({ from, to });
-    if (rawCsv) setCsvData(reAggregate(rawCsv, from, to));
   }
 
   function handleSample() {
@@ -202,6 +234,7 @@ export default function App() {
   const arcsActive  = activeStyleId === 'arcs';
   const needsOrigin = arcsActive && heatPoints.length > 0 && !originEntry;
   const isPaymentsMode = !!paymentsRaw;
+  const firstFile      = csvFiles[0] ?? null; // drives the ColumnMapper UI
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-900 text-white">
@@ -212,8 +245,13 @@ export default function App() {
         {/* ── Import CSV ── */}
         <CollapsibleSection title="Import CSV">
           <div className="flex flex-col gap-2">
-            <DropZone onFile={handleFile} fileName={fileName} error={error} />
-            {!fileName && (
+            <DropZone
+              onFile={handleFile}
+              hasFiles={csvFiles.length > 0 || isPaymentsMode}
+              error={error}
+            />
+            <FileList files={csvFiles} onRemove={handleRemoveFile} />
+            {csvFiles.length === 0 && !isPaymentsMode && (
               <button
                 onClick={handleSample}
                 className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-blue-400 transition-colors text-left"
@@ -222,18 +260,23 @@ export default function App() {
                 Try with sample data →
               </button>
             )}
+            {csvFiles.length > 1 && (
+              <p className="text-xs text-slate-500">
+                Combined: {csvData.length.toLocaleString()} unique ZIP{csvData.length !== 1 ? 's' : ''}
+              </p>
+            )}
           </div>
         </CollapsibleSection>
 
         {/* ── Columns ── */}
-        {rawCsv?.headers && (
+        {firstFile?.headers && (
           <CollapsibleSection title="Columns">
             <ColumnMapper
-              headers={rawCsv.headers}
-              rows={rawCsv.rows}
-              zipIdx={rawCsv.zipIdx}
-              countIdx={rawCsv.countIdx}
-              confidence={rawCsv.confidence}
+              headers={firstFile.headers}
+              rows={firstFile.rows}
+              zipIdx={firstFile.zipIdx}
+              countIdx={firstFile.countIdx}
+              confidence={firstFile.confidence}
               onChange={handleColumnChange}
             />
           </CollapsibleSection>
