@@ -314,9 +314,9 @@ export default function App() {
           </div>
         </CollapsibleSection>
 
-        {/* ── Columns (orders mode only) ── */}
+        {/* ── Map weighting (orders mode only) ── */}
         {!isPaymentsMode && firstFile?.headers && (
-          <CollapsibleSection title="Columns">
+          <CollapsibleSection title="Map Weighting">
             <ColumnMapper
               headers={firstFile.headers}
               rows={firstFile.rows}
