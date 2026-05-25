@@ -19,8 +19,9 @@ import BaseMapToggle from './components/BaseMapToggle.jsx';
 import HeatGradientPicker from './components/HeatGradientPicker.jsx';
 import GlobeLayerControls from './components/GlobeLayerControls.jsx';
 import GlobeView from './components/GlobeView.jsx';
+import PaymentsView from './components/PaymentsView.jsx';
 import CollapsibleSection from './components/CollapsibleSection.jsx';
-import { sniffCsv, aggregateRows, parseIsoDate } from './utils/parseCsv.js';
+import { sniffCsv, aggregateRows, aggregatePayments, parseIsoDate } from './utils/parseCsv.js';
 import logoSmall from '../images/logo_small.png';
 import sampleCsv from './data/sample-orders.csv?raw';
 
@@ -36,6 +37,7 @@ for (const { zip, lat, lon, state, city } of zipCentroids) {
 export default function App() {
   const [rawCsv, setRawCsv]               = useState(null);
   const [csvData, setCsvData]             = useState([]);
+  const [paymentsRaw, setPaymentsRaw]     = useState(null); // { headers, rows } for Etsy Payments CSV
   const [selectedRange, setSelectedRange] = useState({ from: '', to: '' });
   const [activeStyleId, setActiveStyleId] = useState(styles[0].id);
   const [scaleMode, setScaleMode]         = useState('linear');
@@ -59,6 +61,16 @@ export default function App() {
   }, [originZip]);
 
   const dateRange = useMemo(() => {
+    if (paymentsRaw) {
+      const dateIdx = paymentsRaw.headers.findIndex(h => h.toLowerCase() === 'order date');
+      if (dateIdx < 0) return null;
+      const dates = paymentsRaw.rows
+        .map(r => parseIsoDate(r[dateIdx]))
+        .filter(Boolean)
+        .sort();
+      if (!dates.length) return null;
+      return { min: dates[0], max: dates[dates.length - 1] };
+    }
     if (!rawCsv || rawCsv.dateIdx < 0) return null;
     const dates = rawCsv.rows
       .map(r => parseIsoDate(r[rawCsv.dateIdx]))
@@ -66,7 +78,15 @@ export default function App() {
       .sort();
     if (!dates.length) return null;
     return { min: dates[0], max: dates[dates.length - 1] };
-  }, [rawCsv]);
+  }, [rawCsv, paymentsRaw]);
+
+  const payments = useMemo(() => {
+    if (!paymentsRaw) return null;
+    return aggregatePayments(
+      paymentsRaw.headers, paymentsRaw.rows,
+      selectedRange.from || null, selectedRange.to || null,
+    );
+  }, [paymentsRaw, selectedRange.from, selectedRange.to]);
 
   const { heatPoints, matched, unmatched, total } = useMemo(() => {
     if (!csvData.length) return { heatPoints: [], matched: 0, unmatched: 0, total: 0 };
@@ -136,13 +156,17 @@ export default function App() {
       const sniff = await sniffCsv(file);
       if (!sniff.rows.length) throw new Error('No rows found in file.');
       if (sniff.kind === 'etsy-payments') {
-        throw new Error(
-          'This is the Etsy "Direct Checkout Payments" export — it has no shipping ZIPs. ' +
-          'Use the "Sold Orders" CSV from Shop Manager → Settings → Options → Download Data instead.'
-        );
+        // Payments mode: clear map state, store raw rows for re-aggregation
+        setRawCsv(null);
+        setCsvData([]);
+        setPaymentsRaw({ headers: sniff.headers, rows: sniff.rows });
+        setFileName(file.name);
+        return;
       }
       const parsed = reAggregate(sniff, '', '');
       if (!parsed.length) throw new Error('No valid ZIP codes found in the detected column.');
+      // Orders mode: clear payments state
+      setPaymentsRaw(null);
       setRawCsv(sniff);
       setCsvData(parsed);
       setFileName(file.name);
@@ -177,6 +201,7 @@ export default function App() {
   const ActiveStyle = styles.find(s => s.id === activeStyleId)?.component;
   const arcsActive  = activeStyleId === 'arcs';
   const needsOrigin = arcsActive && heatPoints.length > 0 && !originEntry;
+  const isPaymentsMode = !!paymentsRaw;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-900 text-white">
@@ -214,6 +239,13 @@ export default function App() {
           </CollapsibleSection>
         )}
 
+        {/* ── Payments badge (Etsy Payments CSV detected) ── */}
+        {isPaymentsMode && (
+          <div className="self-start text-xs font-medium text-emerald-400 bg-emerald-950/50 px-1.5 py-0.5 rounded">
+            Etsy Payments ✓
+          </div>
+        )}
+
         {/* ── Date Range ── */}
         {dateRange && (
           <CollapsibleSection title="Date Range">
@@ -227,74 +259,72 @@ export default function App() {
           </CollapsibleSection>
         )}
 
-        {/* ── Base Map ── */}
-        <CollapsibleSection title="Base Map">
-          <BaseMapToggle active={baseMap} onChange={setBaseMap} />
-        </CollapsibleSection>
+        {/* ── Map-only controls (hidden in Payments mode) ── */}
+        {!isPaymentsMode && (
+          <>
+            <CollapsibleSection title="Base Map">
+              <BaseMapToggle active={baseMap} onChange={setBaseMap} />
+            </CollapsibleSection>
 
-        {/* ── Map Style (flat only) ── */}
-        {baseMap === 'flat' && (
-          <CollapsibleSection title="Map Style">
-            <div className="flex flex-col gap-2">
-              <StyleSwitcher
-                styles={styles}
-                active={activeStyleId}
-                onChange={setActiveStyleId}
-              />
-              {activeStyleId === 'heatmap' && heatPoints.length > 0 && (
-                <HeatGradientPicker
-                  active={heatGradientId}
-                  onChange={setHeatGradientId}
+            {baseMap === 'flat' && (
+              <CollapsibleSection title="Map Style">
+                <div className="flex flex-col gap-2">
+                  <StyleSwitcher
+                    styles={styles}
+                    active={activeStyleId}
+                    onChange={setActiveStyleId}
+                  />
+                  {activeStyleId === 'heatmap' && heatPoints.length > 0 && (
+                    <HeatGradientPicker
+                      active={heatGradientId}
+                      onChange={setHeatGradientId}
+                    />
+                  )}
+                </div>
+              </CollapsibleSection>
+            )}
+
+            {baseMap === 'globe' && heatPoints.length > 0 && (
+              <CollapsibleSection title="Globe Layers">
+                <GlobeLayerControls
+                  showSpikes={globeShowSpikes}     onSpikes={setGlobeShowSpikes}
+                  showArcs={globeShowArcs}         onArcs={setGlobeShowArcs}
+                  showOrigin={globeShowOrigin}     onOrigin={setGlobeShowOrigin}
+                  arcsAnimated={globeArcsAnimated} onArcsAnimated={setGlobeArcsAnimated}
+                  hasOrigin={!!originEntry}
+                  gradientId={globeGradientId}     onGradient={setGlobeGradientId}
                 />
-              )}
-            </div>
-          </CollapsibleSection>
-        )}
+              </CollapsibleSection>
+            )}
 
-        {/* ── Globe Layers (globe only) ── */}
-        {baseMap === 'globe' && heatPoints.length > 0 && (
-          <CollapsibleSection title="Globe Layers">
-            <GlobeLayerControls
-              showSpikes={globeShowSpikes}     onSpikes={setGlobeShowSpikes}
-              showArcs={globeShowArcs}         onArcs={setGlobeShowArcs}
-              showOrigin={globeShowOrigin}     onOrigin={setGlobeShowOrigin}
-              arcsAnimated={globeArcsAnimated} onArcsAnimated={setGlobeArcsAnimated}
-              hasOrigin={!!originEntry}
-              gradientId={globeGradientId}     onGradient={setGlobeGradientId}
-            />
-          </CollapsibleSection>
-        )}
+            {arcsActive && (
+              <CollapsibleSection title="Ship From">
+                <OriginInput
+                  value={originZip}
+                  onChange={handleOriginZip}
+                  isValid={!!originEntry}
+                />
+              </CollapsibleSection>
+            )}
 
-        {/* ── Ship From (arcs only) ── */}
-        {arcsActive && (
-          <CollapsibleSection title="Ship From">
-            <OriginInput
-              value={originZip}
-              onChange={handleOriginZip}
-              isValid={!!originEntry}
-            />
-          </CollapsibleSection>
-        )}
+            {heatPoints.length > 0 && (
+              <CollapsibleSection title="Color Scale" defaultOpen={false}>
+                <ScaleSwitcher active={scaleMode} onChange={setScaleMode} />
+              </CollapsibleSection>
+            )}
 
-        {/* ── Color Scale ── */}
-        {heatPoints.length > 0 && (
-          <CollapsibleSection title="Color Scale" defaultOpen={false}>
-            <ScaleSwitcher active={scaleMode} onChange={setScaleMode} />
-          </CollapsibleSection>
-        )}
+            {heatPoints.length > 0 && (
+              <CollapsibleSection title="Legend" defaultOpen={false}>
+                <Legend unmatched={unmatched} />
+              </CollapsibleSection>
+            )}
 
-        {/* ── Legend ── */}
-        {heatPoints.length > 0 && (
-          <CollapsibleSection title="Legend" defaultOpen={false}>
-            <Legend unmatched={unmatched} />
-          </CollapsibleSection>
-        )}
-
-        {/* ── Export ── */}
-        {heatPoints.length > 0 && (
-          <CollapsibleSection title="Export" defaultOpen={false}>
-            <ExportButtons mapRef={mapRef} />
-          </CollapsibleSection>
+            {heatPoints.length > 0 && (
+              <CollapsibleSection title="Export" defaultOpen={false}>
+                <ExportButtons mapRef={mapRef} />
+              </CollapsibleSection>
+            )}
+          </>
         )}
 
         <div className="mt-auto pt-2 text-xs text-slate-600">
@@ -304,6 +334,15 @@ export default function App() {
 
       {/* ── Content area ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* ── Payments mode ─────────────────────────────────────────────── */}
+        {isPaymentsMode && payments && (
+          <PaymentsView payments={payments} />
+        )}
+
+        {/* ── Map mode ──────────────────────────────────────────────────── */}
+        {!isPaymentsMode && (
+        <>
         {/* Stat cards — only shown when data is loaded */}
         {heatPoints.length > 0 && stats && (
           <StatCards total={total} matched={matched} stateCount={stats.stateCount} />
@@ -374,6 +413,8 @@ export default function App() {
             />
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
   );

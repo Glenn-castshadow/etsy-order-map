@@ -841,7 +841,7 @@ dependencies = [
 
 [[package]]
 name = "etsy-order-map"
-version = "0.3.35"
+version = "0.3.38"
 dependencies = [
  "log",
  "serde",
