@@ -1,5 +1,6 @@
 import { Marker } from 'react-leaflet';
 import L from 'leaflet';
+import { useLodData } from '../utils/useLodData.js';
 
 const MIN_COINS = 5;
 const MAX_COINS = 18;
@@ -56,11 +57,13 @@ function makeTreasureIcon(weight) {
 }
 
 function TreasureLayer({ data }) {
-  return data.map(({ lat, lng, weight }, i) => {
+  const { lodData } = useLodData(data);
+
+  return lodData.map(({ lat, lng, weight }) => {
     const { dLat, dLng } = stableJitter(lat, lng);
     return (
       <Marker
-        key={`treasure-${lat}-${lng}-${i}`}
+        key={`treasure-${lat}-${lng}`}
         position={[lat + dLat, lng + dLng]}
         icon={makeTreasureIcon(weight)}
       />

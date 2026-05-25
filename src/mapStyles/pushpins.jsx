@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Marker } from 'react-leaflet';
 import L from 'leaflet';
 import pinUrl from '../../images/Asset 1.png';
+import { useLodData } from '../utils/useLodData.js';
 
 // ── Pin sizing ────────────────────────────────────────────────────────────────
 const PIN_W_MIN = 11;   // px, lowest-weight pin
@@ -97,22 +98,23 @@ function PushpinLayer({ data, origin }) {
     return removeStyle;
   }, []);
 
-  const originPt = origin ? [origin.lat, origin.lng] : null;
+  const { lodData } = useLodData(data);
+  const originPt    = origin ? [origin.lat, origin.lng] : null;
 
   // Compute per-point distance from origin for staggered cascade
-  const distances = data.map(({ lat, lng }) =>
+  const distances = lodData.map(({ lat, lng }) =>
     originPt ? latLngDist([lat, lng], originPt) : 0
   );
   const maxDist = Math.max(...distances, 1);
 
-  return data.map(({ lat, lng, weight }, i) => {
+  return lodData.map(({ lat, lng, weight }, i) => {
     const delay = originPt
       ? (distances[i] / maxDist) * MAX_STAGGER
-      : i * (MAX_STAGGER / Math.max(data.length, 1));
+      : i * (MAX_STAGGER / Math.max(lodData.length, 1));
 
     return (
       <Marker
-        key={`pin-${lat}-${lng}-${i}`}
+        key={`pin-${lat}-${lng}`}
         position={[lat, lng]}
         icon={makePinIcon(weight, delay)}
         zIndexOffset={Math.round(weight * 1000)}
