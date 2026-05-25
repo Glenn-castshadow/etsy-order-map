@@ -41,9 +41,17 @@ export default function GlobeView({ data, origin, showSpikes = true, showArcs = 
     ctrl.enableDamping     = true;
     ctrl.dampingFactor     = 0.25;  // more friction → stops quickly, easier to aim
     ctrl.rotateSpeed       = 0.6;   // slower rotation → precise angle control
-    ctrl.enablePan         = true;  // right-drag / two-finger drag pans camera target
+    ctrl.enablePan         = true;
     ctrl.panSpeed          = 1.2;
     ctrl.screenSpacePanning = true; // pan in screen space (feels like a map)
+
+    // Three-globe overrides OrbitControls.mouseButtons internally — re-assign
+    // explicitly so left = rotate and right = pan.  THREE.MOUSE.ROTATE = 0,
+    // THREE.MOUSE.PAN = 2.  Using numeric literals avoids a THREE import.
+    ctrl.mouseButtons = { LEFT: 0, MIDDLE: 1, RIGHT: 2 };
+
+    // Touch: one-finger rotate, two-finger pan
+    ctrl.touches = { ONE: 0, TWO: 2 };
   }
 
   // Stop auto-rotate the moment the user grabs the globe
@@ -79,6 +87,7 @@ export default function GlobeView({ data, origin, showSpikes = true, showArcs = 
       ref={containerRef}
       className="w-full h-full bg-slate-950"
       onPointerDown={handlePointerDown}
+      onContextMenu={e => e.preventDefault()}
     >
       {dims.w > 0 && dims.h > 0 && (
         <Globe
