@@ -1,82 +1,201 @@
-Ship Zipcode,Quantity,Sale Date
-90210,2,2024-01-03
-10001,1,2024-01-04
-77001,1,2024-01-05
-90001,3,2024-01-06
-10002,1,2024-01-08
-33101,2,2024-01-09
-60601,1,2024-01-10
-94102,1,2024-01-11
-78201,2,2024-01-12
-98101,1,2024-01-14
-90210,1,2024-01-15
-11201,2,2024-01-16
-75201,1,2024-01-17
-32801,1,2024-01-18
-80202,2,2024-01-19
-02101,1,2024-01-21
-30301,1,2024-01-22
-44101,1,2024-01-23
-94102,2,2024-01-24
-92101,1,2024-01-25
-10001,3,2024-01-26
-85001,1,2024-01-28
-19101,1,2024-01-29
-27601,1,2024-01-30
-90001,2,2024-01-31
-48201,1,2024-02-01
-55401,1,2024-02-02
-77001,2,2024-02-03
-97201,1,2024-02-05
-37201,1,2024-02-06
-90210,2,2024-02-07
-14201,1,2024-02-08
-33601,1,2024-02-09
-23220,2,2024-02-10
-63101,1,2024-02-11
-60602,1,2024-02-12
-91201,3,2024-02-13
-07001,1,2024-02-14
-53201,1,2024-02-15
-43201,1,2024-02-16
-78201,1,2024-02-17
-15201,1,2024-02-19
-85701,1,2024-02-20
-94102,1,2024-02-21
-10002,2,2024-02-22
-46201,1,2024-02-23
-28201,1,2024-02-24
-89101,1,2024-02-25
-84101,1,2024-02-26
-40201,1,2024-02-27
-90001,1,2024-02-28
-98102,2,2024-03-01
-30303,1,2024-03-02
-79901,1,2024-03-03
-06101,1,2024-03-04
-21201,1,2024-03-05
-92101,2,2024-03-06
-11201,1,2024-03-07
-80203,1,2024-03-08
-49501,1,2024-03-09
-95814,2,2024-03-10
-33101,1,2024-03-11
-77001,1,2024-03-12
-29201,1,2024-03-13
-37201,1,2024-03-14
-90210,3,2024-03-15
-10001,1,2024-03-16
-35201,1,2024-03-17
-68102,1,2024-03-18
-73101,1,2024-03-19
-02134,1,2024-03-20
-91201,1,2024-03-21
-70112,2,2024-03-22
-75201,1,2024-03-23
-04101,1,2024-03-24
-96813,1,2024-03-25
-22201,1,2024-03-26
-08601,1,2024-03-27
-94102,1,2024-03-28
-72201,1,2024-03-29
-83702,1,2024-03-30
+Sale Date,Ship Zipcode,Ship City,Ship State,Full Name,Item Name,SKU,Listing ID,Quantity,Item Total,Currency
+2023-01-09,03101,Manchester,NH,"Jane Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-01-11,98101,Seattle,WA,"John Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-01-12,91201,Glendale,CA,"Maria Garcia","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-01-19,32801,Orlando,FL,"Sarah Mitchell","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-01-21,76001,Arlington,TX,"John Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,2,64.00,USD
+2023-01-21,02134,Allston,MA,"Alice Smith","Personalized Wooden Name Sign",PWS-NAM,1147823941,2,90.00,USD
+2023-01-25,05401,Burlington,VT,"Michael Thompson","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-01-25,58101,Fargo,ND,"Christopher Brown","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-01-29,85001,Phoenix,AZ,"John Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-01-31,35201,Birmingham,AL,"Alice Smith","Custom Portrait Illustration",CPI-DIGI,1147823942,2,150.00,USD
+2023-02-03,32201,Jacksonville,FL,"Maria Garcia","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-02-06,10301,Staten Island,NY,"David Kim","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-02-08,79901,El Paso,TX,"Jane Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,2,90.00,USD
+2023-02-11,93401,San Luis Obispo,CA,"Jane Doe","Custom Portrait Illustration",CPI-DIGI,1147823942,2,150.00,USD
+2023-02-12,97201,Portland,OR,"Maria Garcia","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-02-14,32201,Jacksonville,FL,"Robert Johnson","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-02-14,60601,Chicago,IL,"Christopher Brown","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-02-18,28201,Charlotte,NC,"Christopher Brown","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-02-20,90210,Beverly Hills,CA,"Jane Doe","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-02-25,91201,Glendale,CA,"Michael Thompson","Hand-Poured Soy Candle Set",SCS-SET,1147823945,2,64.00,USD
+2023-02-25,02101,Boston,MA,"Emily Chen","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-03-06,27601,Raleigh,NC,"Jane Doe","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-03-08,80202,Denver,CO,"John Doe","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-03-12,33601,Tampa,FL,"John Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-03-12,33101,Miami,FL,"Robert Johnson","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-03-13,72201,Little Rock,AR,"John Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-03-13,11101,Long Island City,NY,"John Doe","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,2,56.00,USD
+2023-03-16,38101,Memphis,TN,"Robert Johnson","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-03-16,27601,Raleigh,NC,"David Kim","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-03-20,32801,Orlando,FL,"Christopher Brown","Digital Wedding Invitation Template",DWI-TMPL,1147823944,2,36.00,USD
+2023-03-30,91201,Glendale,CA,"Alice Smith","Macrame Wall Hanging Large",MWH-LRG,1147823943,2,136.00,USD
+2023-03-30,64101,Kansas City,MO,"Michael Thompson","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-03-31,90045,Los Angeles,CA,"John Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-04-01,14201,Buffalo,NY,"Robert Johnson","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-04-02,33601,Tampa,FL,"Jane Doe","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-04-02,72201,Little Rock,AR,"Alice Smith","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-04-06,11101,Long Island City,NY,"David Kim","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-04-13,70801,Baton Rouge,LA,"Alice Smith","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-04-14,11201,Brooklyn,NY,"Maria Garcia","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-04-16,11101,Long Island City,NY,"Jane Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-04-19,74101,Tulsa,OK,"Jane Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-04-21,79901,El Paso,TX,"Jane Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-04-22,94102,San Francisco,CA,"Alice Smith","Macrame Wall Hanging Large",MWH-LRG,1147823943,2,136.00,USD
+2023-04-25,90001,Los Angeles,CA,"John Doe","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-04-29,89501,Reno,NV,"Robert Johnson","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-05-03,14201,Buffalo,NY,"John Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-05-07,89101,Las Vegas,NV,"Christopher Brown","Hand-Poured Soy Candle Set",SCS-SET,1147823945,2,64.00,USD
+2023-05-07,62701,Springfield,IL,"Michael Thompson","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-05-08,32801,Orlando,FL,"Jane Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-05-09,78201,San Antonio,TX,"Michael Thompson","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-05-10,92101,San Diego,CA,"Sarah Mitchell","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-05-11,58101,Fargo,ND,"David Kim","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,2,56.00,USD
+2023-05-13,78201,San Antonio,TX,"Christopher Brown","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-05-14,23220,Richmond,VA,"Michael Thompson","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-05-15,33101,Miami,FL,"Robert Johnson","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-05-21,49503,Grand Rapids,MI,"John Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-05-22,92101,San Diego,CA,"Robert Johnson","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-05-23,90210,Beverly Hills,CA,"Alice Smith","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-05-26,70801,Baton Rouge,LA,"Maria Garcia","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,2,56.00,USD
+2023-06-04,60602,Chicago,IL,"John Doe","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-06-05,90045,Los Angeles,CA,"Jane Doe","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-06-07,32201,Jacksonville,FL,"Alice Smith","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-06-08,33101,Miami,FL,"Sarah Mitchell","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-06-08,60602,Chicago,IL,"John Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-06-09,77001,Houston,TX,"Michael Thompson","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-06-14,62701,Springfield,IL,"Jane Doe","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-06-18,98101,Seattle,WA,"Maria Garcia","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-06-21,32201,Jacksonville,FL,"Maria Garcia","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-06-21,48201,Detroit,MI,"Jane Doe","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-06-21,73101,Oklahoma City,OK,"Robert Johnson","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-06-25,32801,Orlando,FL,"Jane Doe","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-06-27,78701,Austin,TX,"Emily Chen","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-07-06,10301,Staten Island,NY,"John Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-07-06,97201,Portland,OR,"Sarah Mitchell","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-07-09,78701,Austin,TX,"Maria Garcia","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-07-11,10001,New York,NY,"David Kim","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-07-13,32201,Jacksonville,FL,"Michael Thompson","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-07-15,60601,Chicago,IL,"Robert Johnson","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-07-20,97401,Eugene,OR,"Jane Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,2,90.00,USD
+2023-07-30,60601,Chicago,IL,"Maria Garcia","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-07-31,05401,Burlington,VT,"Jane Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-08-01,33601,Tampa,FL,"John Doe","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-08-04,92101,San Diego,CA,"John Doe","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-08-05,32801,Orlando,FL,"Christopher Brown","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-08-06,70801,Baton Rouge,LA,"John Doe","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-08-16,74101,Tulsa,OK,"John Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-08-19,06510,New Haven,CT,"Jane Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,2,64.00,USD
+2023-08-19,11101,Long Island City,NY,"Jane Doe","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-08-22,91201,Glendale,CA,"David Kim","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-08-23,49503,Grand Rapids,MI,"Alice Smith","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-08-27,91201,Glendale,CA,"John Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-08-31,97201,Portland,OR,"Robert Johnson","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-09-02,77001,Houston,TX,"Robert Johnson","Custom Portrait Illustration",CPI-DIGI,1147823942,2,150.00,USD
+2023-09-04,60601,Chicago,IL,"Jane Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-09-04,78201,San Antonio,TX,"Maria Garcia","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-09-05,55101,St. Paul,MN,"John Doe","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-09-05,90045,Los Angeles,CA,"Michael Thompson","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-09-05,03101,Manchester,NH,"Jane Doe","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-09-08,33601,Tampa,FL,"Emily Chen","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-09-10,37201,Nashville,TN,"Michael Thompson","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-09-11,94102,San Francisco,CA,"David Kim","Custom Portrait Illustration",CPI-DIGI,1147823942,2,150.00,USD
+2023-09-21,70801,Baton Rouge,LA,"Christopher Brown","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-09-22,32801,Orlando,FL,"Robert Johnson","Personalized Wooden Name Sign",PWS-NAM,1147823941,2,90.00,USD
+2023-09-27,93401,San Luis Obispo,CA,"Jane Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-10-03,96813,Honolulu,HI,"Michael Thompson","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-10-03,76001,Arlington,TX,"Emily Chen","Hand-Poured Soy Candle Set",SCS-SET,1147823945,2,64.00,USD
+2023-10-05,11101,Long Island City,NY,"Maria Garcia","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-10-07,29201,Columbia,SC,"John Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-10-08,14201,Buffalo,NY,"Jane Doe","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-10-23,95814,Sacramento,CA,"Alice Smith","Personalized Wooden Name Sign",PWS-NAM,1147823941,2,90.00,USD
+2023-10-26,10002,New York,NY,"Emily Chen","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-10-28,93401,San Luis Obispo,CA,"Robert Johnson","Personalized Wooden Name Sign",PWS-NAM,1147823941,2,90.00,USD
+2023-10-28,60602,Chicago,IL,"Christopher Brown","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-10-28,79901,El Paso,TX,"Alice Smith","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-10-29,79901,El Paso,TX,"Robert Johnson","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-11-07,33601,Tampa,FL,"Maria Garcia","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-11-08,74101,Tulsa,OK,"Robert Johnson","Custom Portrait Illustration",CPI-DIGI,1147823942,2,150.00,USD
+2023-11-09,29401,Charleston,SC,"John Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-11-16,74101,Tulsa,OK,"Emily Chen","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-11-18,94102,San Francisco,CA,"John Doe","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-11-22,06510,New Haven,CT,"Christopher Brown","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-11-23,75201,Dallas,TX,"Maria Garcia","Personalized Wooden Name Sign",PWS-NAM,1147823941,2,90.00,USD
+2023-11-23,95814,Sacramento,CA,"John Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2023-11-25,77001,Houston,TX,"Robert Johnson","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-12-02,10301,Staten Island,NY,"Jane Doe","Macrame Wall Hanging Large",MWH-LRG,1147823943,2,136.00,USD
+2023-12-05,97401,Eugene,OR,"John Doe","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2023-12-05,57101,Sioux Falls,SD,"John Doe","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2023-12-11,90045,Los Angeles,CA,"John Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2023-12-11,93401,San Luis Obispo,CA,"John Doe","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2023-12-12,02134,Allston,MA,"Alice Smith","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-12-14,10301,Staten Island,NY,"Alice Smith","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-12-20,75201,Dallas,TX,"Alice Smith","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2023-12-29,93401,San Luis Obispo,CA,"Sarah Mitchell","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2024-01-04,10301,Staten Island,NY,"Robert Johnson","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2024-01-11,75201,Dallas,TX,"Jane Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2024-01-12,79901,El Paso,TX,"Jane Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2024-01-13,29201,Columbia,SC,"Jane Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2024-01-15,33101,Miami,FL,"Jane Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2024-01-15,90210,Beverly Hills,CA,"Alice Smith","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,2,56.00,USD
+2024-01-17,32201,Jacksonville,FL,"Robert Johnson","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2024-01-19,78201,San Antonio,TX,"John Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2024-01-20,77001,Houston,TX,"Michael Thompson","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2024-01-21,90001,Los Angeles,CA,"Alice Smith","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2024-01-27,58101,Fargo,ND,"Maria Garcia","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2024-01-28,33601,Tampa,FL,"John Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2024-02-03,95814,Sacramento,CA,"Alice Smith","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2024-02-05,11201,Brooklyn,NY,"Jane Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2024-02-07,83702,Boise,ID,"Michael Thompson","Personalized Wooden Name Sign",PWS-NAM,1147823941,2,90.00,USD
+2024-02-10,32201,Jacksonville,FL,"David Kim","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2024-02-12,59601,Helena,MT,"Jane Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2024-02-13,32801,Orlando,FL,"Jane Doe","Macrame Wall Hanging Large",MWH-LRG,1147823943,2,136.00,USD
+2024-02-14,02101,Boston,MA,"Jane Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,2,36.00,USD
+2024-02-19,77001,Houston,TX,"Alice Smith","Custom Portrait Illustration",CPI-DIGI,1147823942,2,150.00,USD
+2024-02-22,90045,Los Angeles,CA,"Michael Thompson","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2024-02-25,11201,Brooklyn,NY,"Robert Johnson","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2024-03-02,10001,New York,NY,"Michael Thompson","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2024-03-03,11101,Long Island City,NY,"Maria Garcia","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2024-03-05,90001,Los Angeles,CA,"Sarah Mitchell","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2024-03-06,75201,Dallas,TX,"Jane Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2024-03-07,35201,Birmingham,AL,"John Doe","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2024-03-09,33101,Miami,FL,"Robert Johnson","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2024-03-15,76001,Arlington,TX,"Sarah Mitchell","Digital Wedding Invitation Template",DWI-TMPL,1147823944,2,36.00,USD
+2024-03-21,90045,Los Angeles,CA,"Sarah Mitchell","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2024-03-23,82001,Cheyenne,WY,"David Kim","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2024-03-23,14201,Buffalo,NY,"Jane Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2024-03-29,33101,Miami,FL,"Sarah Mitchell","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2024-03-30,14201,Buffalo,NY,"Robert Johnson","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2024-04-01,91201,Glendale,CA,"Jane Doe","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2024-04-01,85701,Tucson,AZ,"David Kim","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2024-04-01,62701,Springfield,IL,"Alice Smith","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2024-04-06,10001,New York,NY,"Jane Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2024-04-07,33101,Miami,FL,"Robert Johnson","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2024-04-08,85001,Phoenix,AZ,"John Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2024-04-14,94102,San Francisco,CA,"Michael Thompson","Digital Wedding Invitation Template",DWI-TMPL,1147823944,2,36.00,USD
+2024-04-14,55401,Minneapolis,MN,"Maria Garcia","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2024-04-18,89501,Reno,NV,"Jane Doe","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2024-04-22,64101,Kansas City,MO,"Maria Garcia","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2024-04-23,87101,Albuquerque,NM,"John Doe","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2024-04-23,32201,Jacksonville,FL,"Maria Garcia","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2024-04-25,46201,Indianapolis,IN,"Maria Garcia","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2024-04-25,07030,Hoboken,NJ,"Robert Johnson","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2024-04-26,29201,Columbia,SC,"Robert Johnson","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2024-04-27,37201,Nashville,TN,"David Kim","Custom Portrait Illustration",CPI-DIGI,1147823942,1,75.00,USD
+2024-04-27,60602,Chicago,IL,"Alice Smith","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2024-04-30,91201,Glendale,CA,"Maria Garcia","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,2,56.00,USD
+2024-05-02,10301,Staten Island,NY,"Robert Johnson","Digital Wedding Invitation Template",DWI-TMPL,1147823944,2,36.00,USD
+2024-05-04,48201,Detroit,MI,"Alice Smith","Hand-Poured Soy Candle Set",SCS-SET,1147823945,2,64.00,USD
+2024-05-07,10002,New York,NY,"John Doe","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2024-05-14,84601,Provo,UT,"Alice Smith","Digital Wedding Invitation Template",DWI-TMPL,1147823944,1,18.00,USD
+2024-05-16,11101,Long Island City,NY,"Jane Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,2,90.00,USD
+2024-05-16,62701,Springfield,IL,"Alice Smith","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,1,28.00,USD
+2024-05-16,97201,Portland,OR,"Jane Doe","Macrame Wall Hanging Large",MWH-LRG,1147823943,2,136.00,USD
+2024-05-18,96813,Honolulu,HI,"Maria Garcia","Macrame Wall Hanging Large",MWH-LRG,1147823943,2,136.00,USD
+2024-06-05,32801,Orlando,FL,"John Doe","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,2,56.00,USD
+2024-06-09,32801,Orlando,FL,"Michael Thompson","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2024-06-13,06101,Hartford,CT,"Christopher Brown","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
+2024-06-15,55101,St. Paul,MN,"Alice Smith","Macrame Wall Hanging Large",MWH-LRG,1147823943,1,68.00,USD
+2024-06-17,11201,Brooklyn,NY,"Alice Smith","Hand-Painted Watercolor Print 8x10",WCP-8X10,1147823940,2,56.00,USD
+2024-06-19,76001,Arlington,TX,"John Doe","Personalized Wooden Name Sign",PWS-NAM,1147823941,1,45.00,USD
+2024-06-21,79901,El Paso,TX,"David Kim","Hand-Poured Soy Candle Set",SCS-SET,1147823945,1,32.00,USD
