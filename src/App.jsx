@@ -15,6 +15,8 @@ import ExportButtons from './components/ExportButtons.jsx';
 import StatCards from './components/StatCards.jsx';
 import TopStatesPanel from './components/TopStatesPanel.jsx';
 import ScaleSwitcher from './components/ScaleSwitcher.jsx';
+import BaseMapToggle from './components/BaseMapToggle.jsx';
+import GlobeView from './components/GlobeView.jsx';
 import { sniffCsv, aggregateRows, parseIsoDate } from './utils/parseCsv.js';
 
 const zipLookup      = new Map();
@@ -32,6 +34,7 @@ export default function App() {
   const [selectedRange, setSelectedRange] = useState({ from: '', to: '' });
   const [activeStyleId, setActiveStyleId] = useState(styles[0].id);
   const [scaleMode, setScaleMode]         = useState('linear');
+  const [baseMap, setBaseMap]             = useState('flat');
   const [fileName, setFileName]           = useState(null);
   const [error, setError]                 = useState(null);
   const [originZip, setOriginZip]         = useState(
@@ -185,11 +188,15 @@ export default function App() {
           />
         )}
 
-        <StyleSwitcher
-          styles={styles}
-          active={activeStyleId}
-          onChange={setActiveStyleId}
-        />
+        <BaseMapToggle active={baseMap} onChange={setBaseMap} />
+
+        {baseMap === 'flat' && (
+          <StyleSwitcher
+            styles={styles}
+            active={activeStyleId}
+            onChange={setActiveStyleId}
+          />
+        )}
 
         {arcsActive && (
           <OriginInput
@@ -223,25 +230,32 @@ export default function App() {
           <StatCards total={total} matched={matched} stateCount={stats.stateCount} />
         )}
 
-        {/* Map */}
+        {/* Map / Globe */}
         <div ref={mapRef} className="flex-1 relative">
-          <MapContainer
-            center={[39.5, -98.35]}
-            zoom={4}
-            style={{ height: '100%', width: '100%' }}
-            zoomControl
-          >
-            <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              subdomains="abcd"
-              maxZoom={19}
-              crossOrigin="anonymous"
-            />
-            {ActiveStyle && heatPoints.length > 0 && (
-              <ActiveStyle data={heatPoints} origin={originEntry} />
-            )}
-          </MapContainer>
+
+          {baseMap === 'globe' ? (
+            /* ── 3-D Globe ─────────────────────────────────────────────── */
+            <GlobeView data={heatPoints} origin={originEntry} />
+          ) : (
+            /* ── Flat map ──────────────────────────────────────────────── */
+            <MapContainer
+              center={[39.5, -98.35]}
+              zoom={4}
+              style={{ height: '100%', width: '100%' }}
+              zoomControl
+            >
+              <TileLayer
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                subdomains="abcd"
+                maxZoom={19}
+                crossOrigin="anonymous"
+              />
+              {ActiveStyle && heatPoints.length > 0 && (
+                <ActiveStyle data={heatPoints} origin={originEntry} />
+              )}
+            </MapContainer>
+          )}
 
           {/* Empty state */}
           {!heatPoints.length && (
