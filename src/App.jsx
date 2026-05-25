@@ -12,11 +12,18 @@ import StyleSwitcher from './components/StyleSwitcher.jsx';
 import OriginInput from './components/OriginInput.jsx';
 import Legend from './components/Legend.jsx';
 import ExportButtons from './components/ExportButtons.jsx';
+import StatCards from './components/StatCards.jsx';
+import TopStatesPanel from './components/TopStatesPanel.jsx';
 import { sniffCsv, aggregateRows, parseIsoDate } from './utils/parseCsv.js';
 
-const zipLookup = new Map(
-  zipCentroids.map(({ zip, lat, lon }) => [zip, { lat, lng: lon }])
-);
+const zipLookup      = new Map();
+const zipStateLookup = new Map();
+const zipCityLookup  = new Map();
+for (const { zip, lat, lon, state, city } of zipCentroids) {
+  zipLookup.set(zip, { lat, lng: lon });
+  zipStateLookup.set(zip, state);
+  zipCityLookup.set(zip, city);
+}
 
 export default function App() {
   const [rawCsv, setRawCsv]               = useState(null);
@@ -30,13 +37,11 @@ export default function App() {
   );
   const mapRef = useRef(null);
 
-  // Resolved origin coords for the Arcs style
   const originEntry = useMemo(() => {
     if (originZip.length < 5) return null;
     return zipLookup.get(originZip.padStart(5, '0')) ?? null;
   }, [originZip]);
 
-  // Full date span in the loaded file
   const dateRange = useMemo(() => {
     if (!rawCsv || rawCsv.dateIdx < 0) return null;
     const dates = rawCsv.rows
@@ -59,6 +64,25 @@ export default function App() {
       return [{ lat: loc.lat, lng: loc.lng, weight: count / maxCount }];
     });
     return { heatPoints, matched, unmatched, total };
+  }, [csvData]);
+
+  const stats = useMemo(() => {
+    if (!csvData.length) return null;
+    const stateCounts = new Map();
+    let topZip = null;
+    for (const { zip, count } of csvData) {
+      const state = zipStateLookup.get(zip);
+      if (!state) continue;
+      stateCounts.set(state, (stateCounts.get(state) ?? 0) + count);
+      if (!topZip || count > topZip.count) {
+        topZip = { zip, count, city: zipCityLookup.get(zip) };
+      }
+    }
+    const topStates = [...stateCounts.entries()]
+      .map(([state, count]) => ({ state, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    return { topStates, topZip, stateCount: stateCounts.size };
   }, [csvData]);
 
   function reAggregate(sniff, from, to) {
@@ -153,7 +177,7 @@ export default function App() {
         )}
 
         {heatPoints.length > 0 && (
-          <Legend matched={matched} unmatched={unmatched} total={total} />
+          <Legend unmatched={unmatched} />
         )}
 
         {heatPoints.length > 0 && (
@@ -165,46 +189,64 @@ export default function App() {
         </div>
       </aside>
 
-      {/* ── Map ── */}
-      <main ref={mapRef} className="flex-1 relative">
-        <MapContainer
-          center={[39.5, -98.35]}
-          zoom={4}
-          style={{ height: '100%', width: '100%' }}
-          zoomControl
-        >
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            subdomains="abcd"
-            maxZoom={19}
-            crossOrigin="anonymous"
-          />
-          {ActiveStyle && heatPoints.length > 0 && (
-            <ActiveStyle data={heatPoints} origin={originEntry} />
+      {/* ── Content area ── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Stat cards — only shown when data is loaded */}
+        {heatPoints.length > 0 && stats && (
+          <StatCards total={total} matched={matched} stateCount={stats.stateCount} />
+        )}
+
+        {/* Map */}
+        <div ref={mapRef} className="flex-1 relative">
+          <MapContainer
+            center={[39.5, -98.35]}
+            zoom={4}
+            style={{ height: '100%', width: '100%' }}
+            zoomControl
+          >
+            <TileLayer
+              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              subdomains="abcd"
+              maxZoom={19}
+              crossOrigin="anonymous"
+            />
+            {ActiveStyle && heatPoints.length > 0 && (
+              <ActiveStyle data={heatPoints} origin={originEntry} />
+            )}
+          </MapContainer>
+
+          {/* Empty state */}
+          {!heatPoints.length && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-slate-900/80 rounded-xl px-6 py-4 text-center">
+                <p className="text-slate-300 text-sm">Upload a CSV to see your heatmap</p>
+                <p className="text-slate-500 text-xs mt-1">zip column · or · zip, count columns</p>
+              </div>
+            </div>
           )}
-        </MapContainer>
 
-        {/* Empty state */}
-        {!heatPoints.length && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="bg-slate-900/80 rounded-xl px-6 py-4 text-center">
-              <p className="text-slate-300 text-sm">Upload a CSV to see your heatmap</p>
-              <p className="text-slate-500 text-xs mt-1">zip column · or · zip, count columns</p>
+          {/* Arcs hint when origin ZIP not yet set */}
+          {needsOrigin && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-slate-900/80 rounded-xl px-6 py-4 text-center">
+                <p className="text-slate-300 text-sm">Enter your shop ZIP in the sidebar</p>
+                <p className="text-slate-500 text-xs mt-1">to draw shipping arcs from your location</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Arcs hint when origin ZIP not yet set */}
-        {needsOrigin && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="bg-slate-900/80 rounded-xl px-6 py-4 text-center">
-              <p className="text-slate-300 text-sm">Enter your shop ZIP in the sidebar</p>
-              <p className="text-slate-500 text-xs mt-1">to draw shipping arcs from your location</p>
-            </div>
-          </div>
-        )}
-      </main>
+          {/* Top states + insights overlay */}
+          {heatPoints.length > 0 && stats && (
+            <TopStatesPanel
+              topStates={stats.topStates}
+              total={total}
+              topZip={stats.topZip}
+              stateCount={stats.stateCount}
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }
