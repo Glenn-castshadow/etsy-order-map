@@ -56,16 +56,17 @@ function makeTreasureIcon(weight) {
   });
 }
 
-function TreasureLayer({ data }) {
+function TreasureLayer({ data, onZipClick }) {
   const { lodData } = useLodData(data);
 
-  return lodData.map(({ lat, lng, weight }) => {
+  return lodData.map(({ zip, lat, lng, weight }) => {
     const { dLat, dLng } = stableJitter(lat, lng);
     return (
       <Marker
         key={`treasure-${lat}-${lng}`}
         position={[lat + dLat, lng + dLng]}
         icon={makeTreasureIcon(weight)}
+        eventHandlers={onZipClick && zip ? { click: () => onZipClick(zip) } : undefined}
       />
     );
   });

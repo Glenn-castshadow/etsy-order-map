@@ -199,16 +199,24 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
   for (const file of files) {
     const headers = file.headers;
     const rows    = file.rows;
-    const idx = (name) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
-    const iGross   = idx('Gross Amount');
-    const iFees    = idx('Fees');
-    const iNet     = idx('Net Amount');
-    const iRefund  = idx('Refund Amount');
-    const iDate    = idx('Order Date');
-    const iBuyer   = idx('Buyer');                // fallback for blank Buyer Name
-    const iBuyerNm = idx('Buyer Name');
-    const iStatus  = idx('Status');
-    const iCur     = idx('Currency');
+    // Match either Etsy Payments column names OR Etsy Sold Orders names,
+    // so the same dashboard works for both export types.
+    const idxAny = (...names) => {
+      for (const name of names) {
+        const i = headers.findIndex(h => h?.toLowerCase() === name.toLowerCase());
+        if (i >= 0) return i;
+      }
+      return -1;
+    };
+    const iGross   = idxAny('Gross Amount', 'Order Total', 'Order Value');
+    const iFees    = idxAny('Fees', 'Card Processing Fees');
+    const iNet     = idxAny('Net Amount', 'Order Net', 'Adjusted Net Order Amount');
+    const iRefund  = idxAny('Refund Amount');
+    const iDate    = idxAny('Order Date', 'Sale Date', 'Date');
+    const iBuyer   = idxAny('Buyer');             // fallback for blank Buyer Name
+    const iBuyerNm = idxAny('Buyer Name', 'Full Name');
+    const iStatus  = idxAny('Status');
+    const iCur     = idxAny('Currency');
 
     for (const row of rows) {
       const date = parseIsoDate(row[iDate]);
@@ -294,9 +302,88 @@ function fillMonthRange(min, max) {
   return out;
 }
 
+/**
+ * Build a per-ZIP detail map for the click-to-inspect popup.  Returns a Map
+ * keyed by ZIP →  { zip, city, state, orders, totalValue, totalItems,
+ *                  customers (Set), skus (Set) }.
+ *
+ * Each file uses its own zip/count/date indices.  Extra detail columns
+ * (Full Name, Order Total, SKU, Ship City, Ship State) are looked up by
+ * header name with sensible aliases.
+ *
+ * @param {Array} files            csvFiles array (orders kind)
+ * @param {string|null} fromDate
+ * @param {string|null} toDate
+ */
+export function aggregateZipDetails(files, fromDate = null, toDate = null) {
+  const out = new Map();
+
+  for (const file of files) {
+    if (file.kind === 'etsy-payments') continue;
+    const { headers, rows, zipIdx, countIdx, dateIdx } = file;
+    const idxAny = (...names) => {
+      for (const name of names) {
+        const i = headers?.findIndex(h => h?.toLowerCase() === name.toLowerCase());
+        if (i != null && i >= 0) return i;
+      }
+      return -1;
+    };
+    const iCustomer = idxAny('Full Name', 'Buyer Name', 'Buyer', 'Customer');
+    const iTotal    = idxAny('Order Total', 'Order Value', 'Total', 'Gross Amount');
+    const iSku      = idxAny('SKU', 'Product', 'Item');
+    const iCity     = idxAny('Ship City', 'City');
+    const iState    = idxAny('Ship State', 'State');
+
+    for (const row of rows) {
+      if (dateIdx >= 0 && (fromDate || toDate)) {
+        const d = parseIsoDate(row[dateIdx]);
+        if (d) {
+          if (fromDate && d < fromDate) continue;
+          if (toDate   && d > toDate)   continue;
+        }
+      }
+      const zip = normalizeZip(row[zipIdx]);
+      if (!zip) continue;
+
+      let entry = out.get(zip);
+      if (!entry) {
+        entry = {
+          zip,
+          city:       iCity  >= 0 ? String(row[iCity]  || '').trim() : '',
+          state:      iState >= 0 ? String(row[iState] || '').trim() : '',
+          orders:     [],
+          totalValue: 0,
+          totalItems: 0,
+          customers:  new Set(),
+          skus:       new Set(),
+        };
+        out.set(zip, entry);
+      }
+
+      const total    = iTotal    >= 0 ? +parseFloat(row[iTotal])    || 0 : 0;
+      const items    = countIdx  >= 0 ? +parseFloat(row[countIdx])  || 1 : 1;
+      const customer = iCustomer >= 0 ? String(row[iCustomer] || '').trim() : '';
+      const sku      = iSku      >= 0 ? String(row[iSku] || '').trim() : '';
+      const date     = dateIdx   >= 0 ? parseIsoDate(row[dateIdx]) : null;
+
+      entry.orders.push({ date, customer: customer || '—', items, total, sku });
+      entry.totalValue += total;
+      entry.totalItems += items;
+      if (customer) entry.customers.add(customer);
+      if (sku)      entry.skus.add(sku);
+    }
+  }
+
+  // Sort each ZIP's orders by date (newest first) for nicer popup display
+  for (const entry of out.values()) {
+    entry.orders.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
+  }
+  return out;
+}
+
 // ── Internal ───────────────────────────────────────────────────────────────
 
-function normalizeZip(val) {
+export function normalizeZip(val) {
   if (val == null) return null;
   let s = String(val).trim().replace(/\.0+$/, '');
   if (!s) return null;

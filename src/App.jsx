@@ -22,7 +22,8 @@ import GlobeLayerControls from './components/GlobeLayerControls.jsx';
 import GlobeView from './components/GlobeView.jsx';
 import PaymentsView from './components/PaymentsView.jsx';
 import CollapsibleSection from './components/CollapsibleSection.jsx';
-import { sniffCsv, aggregateRows, aggregatePayments, parseIsoDate } from './utils/parseCsv.js';
+import { sniffCsv, aggregateRows, aggregatePayments, aggregateZipDetails, parseIsoDate } from './utils/parseCsv.js';
+import ZipDetailPopup from './components/ZipDetailPopup.jsx';
 import logoSmall from '../images/logo_small.png';
 import sampleCsv from './data/sample-orders.csv?raw';
 
@@ -51,6 +52,8 @@ export default function App() {
   const [globeShowOrigin,   setGlobeShowOrigin]   = useState(true);
   const [globeArcsAnimated, setGlobeArcsAnimated] = useState(true);
   const [baseMap, setBaseMap]             = useState('flat');
+  const [viewMode, setViewMode]           = useState('map');  // 'map' | 'chart'
+  const [selectedZip, setSelectedZip]     = useState(null);   // clicked ZIP for popup
   const [error, setError]                 = useState(null);
   const [originZip, setOriginZip]         = useState(
     () => localStorage.getItem('zipmap-origin') ?? ''
@@ -108,13 +111,16 @@ export default function App() {
     return [...combined.entries()].map(([zip, count]) => ({ zip, count }));
   }, [csvFiles, isPaymentsMode, selectedRange.from, selectedRange.to]);
 
+  // Financial aggregation — works for both Etsy Payments and Etsy Sold
+  // Orders exports because aggregatePayments resolves columns from multiple
+  // aliases (Gross Amount | Order Total, Buyer Name | Full Name, etc.).
   const payments = useMemo(() => {
-    if (!isPaymentsMode) return null;
+    if (!csvFiles.length) return null;
     return aggregatePayments(
       csvFiles,
       selectedRange.from || null, selectedRange.to || null,
     );
-  }, [csvFiles, isPaymentsMode, selectedRange.from, selectedRange.to]);
+  }, [csvFiles, selectedRange.from, selectedRange.to]);
 
   const { heatPoints, matched, unmatched, total } = useMemo(() => {
     if (!csvData.length) return { heatPoints: [], matched: 0, unmatched: 0, total: 0 };
@@ -123,14 +129,14 @@ export default function App() {
     const logMax   = Math.log(maxCount + 1);
     let matched = 0, unmatched = 0, total = 0;
 
-    // Geocode first, collect resolved points
+    // Geocode first, collect resolved points (carry zip through for click-detail)
     const resolved = [];
     for (const { zip, count } of csvData) {
       total += count;
       const loc = zipLookup.get(zip);
       if (!loc) { unmatched++; continue; }
       matched++;
-      resolved.push({ lat: loc.lat, lng: loc.lng, count });
+      resolved.push({ zip, lat: loc.lat, lng: loc.lng, count });
     }
 
     // Apply scale mode
@@ -138,10 +144,10 @@ export default function App() {
     if (scaleMode === 'rank') {
       const sorted = [...resolved].sort((a, b) => a.count - b.count);
       const n = sorted.length;
-      heatPoints = sorted.map((p, i) => ({ lat: p.lat, lng: p.lng, weight: (i + 1) / n }));
+      heatPoints = sorted.map((p, i) => ({ zip: p.zip, lat: p.lat, lng: p.lng, weight: (i + 1) / n }));
     } else {
       heatPoints = resolved.map(p => ({
-        lat: p.lat, lng: p.lng,
+        zip: p.zip, lat: p.lat, lng: p.lng,
         weight: scaleMode === 'log'
           ? Math.log(p.count + 1) / logMax
           : p.count / maxCount,
@@ -150,6 +156,26 @@ export default function App() {
 
     return { heatPoints, matched, unmatched, total };
   }, [csvData, scaleMode]);
+
+  // Per-ZIP detail bundle for the click-to-inspect popup
+  const zipDetails = useMemo(
+    () => isPaymentsMode
+      ? new Map()
+      : aggregateZipDetails(csvFiles, selectedRange.from || null, selectedRange.to || null),
+    [csvFiles, isPaymentsMode, selectedRange.from, selectedRange.to],
+  );
+
+  // Detail entry for the clicked ZIP, enriched with the centroid lookup's city/state
+  const selectedDetail = useMemo(() => {
+    if (!selectedZip) return null;
+    const d = zipDetails.get(selectedZip);
+    if (!d) return null;
+    return {
+      ...d,
+      city:  d.city  || zipCityLookup.get(selectedZip)  || '',
+      state: d.state || zipStateLookup.get(selectedZip) || '',
+    };
+  }, [selectedZip, zipDetails]);
 
   const stats = useMemo(() => {
     if (!csvData.length) return null;
@@ -392,13 +418,32 @@ export default function App() {
       {/* ── Content area ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
 
-        {/* ── Payments mode ─────────────────────────────────────────────── */}
-        {isPaymentsMode && payments && (
+        {/* View-mode toggle — visible whenever there's data.  Map is disabled
+            in payments mode (no ZIPs to plot). */}
+        {csvFiles.length > 0 && (
+          <div className="flex items-center gap-1.5 px-4 py-2 border-b border-slate-800 bg-slate-900/60">
+            <ViewToggleBtn
+              label="🗺️ Map"
+              active={viewMode === 'map' && !isPaymentsMode}
+              disabled={isPaymentsMode}
+              onClick={() => setViewMode('map')}
+              title={isPaymentsMode ? 'Payments CSVs have no ZIP data' : undefined}
+            />
+            <ViewToggleBtn
+              label="📊 Chart"
+              active={viewMode === 'chart' || isPaymentsMode}
+              onClick={() => setViewMode('chart')}
+            />
+          </div>
+        )}
+
+        {/* ── Chart view (or payments-only when no ZIP data) ───────────── */}
+        {(viewMode === 'chart' || isPaymentsMode) && payments && (
           <PaymentsView payments={payments} />
         )}
 
-        {/* ── Map mode ──────────────────────────────────────────────────── */}
-        {!isPaymentsMode && (
+        {/* ── Map view ─────────────────────────────────────────────────── */}
+        {viewMode === 'map' && !isPaymentsMode && (
         <>
         {/* Stat cards — only shown when data is loaded */}
         {heatPoints.length > 0 && stats && (
@@ -418,6 +463,7 @@ export default function App() {
               showOrigin={globeShowOrigin}
               arcsAnimated={globeArcsAnimated}
               gradientId={globeGradientId}
+              onZipClick={setSelectedZip}
             />
           ) : (
             /* ── Flat map ──────────────────────────────────────────────── */
@@ -435,10 +481,18 @@ export default function App() {
                 crossOrigin="anonymous"
               />
               {ActiveStyle && heatPoints.length > 0 && (
-                <ActiveStyle data={heatPoints} origin={originEntry} gradientId={heatGradientId} />
+                <ActiveStyle
+                  data={heatPoints}
+                  origin={originEntry}
+                  gradientId={heatGradientId}
+                  onZipClick={setSelectedZip}
+                />
               )}
             </MapContainer>
           )}
+
+          {/* Click-to-inspect popup */}
+          <ZipDetailPopup detail={selectedDetail} onClose={() => setSelectedZip(null)} />
 
           {/* Empty state */}
           {!heatPoints.length && (
@@ -474,5 +528,25 @@ export default function App() {
         )}
       </div>
     </div>
+  );
+}
+
+function ViewToggleBtn({ label, active, disabled, onClick, title }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={[
+        'rounded px-3 py-1 text-xs font-medium transition-colors',
+        disabled
+          ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+          : active
+            ? 'bg-blue-600 text-white'
+            : 'bg-slate-700 text-slate-300 hover:bg-slate-600',
+      ].join(' ')}
+    >
+      {label}
+    </button>
   );
 }

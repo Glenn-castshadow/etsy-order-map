@@ -10,7 +10,7 @@ function withAlpha(hslaStr, alpha) {
   return hslaStr.replace(/,[\d.]+\)$/, `,${alpha})`);
 }
 
-export default function GlobeView({ data, origin, showSpikes = true, showArcs = true, showOrigin = true, arcsAnimated = true, gradientId = 'spectrum' }) {
+export default function GlobeView({ data, origin, showSpikes = true, showArcs = true, showOrigin = true, arcsAnimated = true, gradientId = 'spectrum', onZipClick }) {
   const globeRef     = useRef(null);
   const containerRef = useRef(null);
   const initRef      = useRef(false);          // guard: configure controls only ONCE
@@ -189,6 +189,7 @@ export default function GlobeView({ data, origin, showSpikes = true, showArcs = 
           pointColor={d => gradient.center(d.weight)}
           pointsMerge={false}
           pointResolution={6}
+          onPointClick={onZipClick ? (d => d?.zip && onZipClick(d.zip)) : undefined}
 
           // ── Origin ring — pulsing gold halo at shop ZIP ─────────────────
           ringsData={rings}

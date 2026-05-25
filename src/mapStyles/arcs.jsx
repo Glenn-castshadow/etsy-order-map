@@ -34,12 +34,12 @@ function controlPoint(from, to) {
   return [midLat + span * 0.35, midLng];
 }
 
-function ArcLayer({ data, origin }) {
+function ArcLayer({ data, origin, onZipClick }) {
   if (!origin) return null;
 
   const from = [origin.lat, origin.lng];
 
-  return data.map(({ lat, lng, weight }, i) => {
+  return data.map(({ zip, lat, lng, weight }, i) => {
     // Skip destinations that are at (or extremely close to) the origin
     if (Math.abs(lat - origin.lat) < 0.05 && Math.abs(lng - origin.lng) < 0.05)
       return null;
@@ -55,6 +55,7 @@ function ArcLayer({ data, origin }) {
       <Polyline
         key={`arc-${lat}-${lng}-${i}`}
         positions={bezier(from, ctrl, to)}
+        eventHandlers={onZipClick && zip ? { click: () => onZipClick(zip) } : undefined}
         pathOptions={{
           color,
           weight:  1 + weight * 3,

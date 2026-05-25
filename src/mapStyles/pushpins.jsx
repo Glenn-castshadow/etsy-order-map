@@ -92,7 +92,7 @@ function makePinIcon(weight, delay) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-function PushpinLayer({ data, origin }) {
+function PushpinLayer({ data, origin, onZipClick }) {
   useEffect(() => {
     injectStyle();
     return removeStyle;
@@ -111,7 +111,7 @@ function PushpinLayer({ data, origin }) {
     return Math.max(...sorted.map(({ lat, lng }) => latLngDist([lat, lng], originPt)), 1);
   }, [sorted, origin?.lat, origin?.lng]);
 
-  return lodData.map(({ lat, lng, weight }, i) => {
+  return lodData.map(({ zip, lat, lng, weight }, i) => {
     const delay = originPt
       ? (latLngDist([lat, lng], originPt) / globalMaxDist) * MAX_STAGGER
       : (i / Math.max(sorted.length - 1, 1)) * MAX_STAGGER;
@@ -122,6 +122,7 @@ function PushpinLayer({ data, origin }) {
         position={[lat, lng]}
         icon={makePinIcon(weight, delay)}
         zIndexOffset={Math.round(weight * 1000)}
+        eventHandlers={onZipClick && zip ? { click: () => onZipClick(zip) } : undefined}
       />
     );
   });
