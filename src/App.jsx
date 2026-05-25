@@ -19,6 +19,7 @@ import BaseMapToggle from './components/BaseMapToggle.jsx';
 import GlobeView from './components/GlobeView.jsx';
 import { sniffCsv, aggregateRows, parseIsoDate } from './utils/parseCsv.js';
 import logoSmall from '../images/logo_small.png';
+import sampleCsv from './data/sample-orders.csv?raw';
 
 const zipLookup      = new Map();
 const zipStateLookup = new Map();
@@ -147,6 +148,11 @@ export default function App() {
     if (rawCsv) setCsvData(reAggregate(rawCsv, from, to));
   }
 
+  function handleSample() {
+    const file = new File([sampleCsv], 'sample-orders.csv', { type: 'text/csv' });
+    handleFile(file);
+  }
+
   function handleOriginZip(zip) {
     setOriginZip(zip);
     if (zip.length === 5) localStorage.setItem('zipmap-origin', zip);
@@ -164,6 +170,15 @@ export default function App() {
         <img src={logoSmall} alt="ZipMap" className="h-20 w-auto self-start" />
 
         <DropZone onFile={handleFile} fileName={fileName} error={error} />
+
+        {!fileName && (
+          <button
+            onClick={handleSample}
+            className="text-xs text-slate-400 hover:text-blue-400 transition-colors text-left -mt-3"
+          >
+            Try with sample data →
+          </button>
+        )}
 
         {rawCsv?.headers && (
           <ColumnMapper
