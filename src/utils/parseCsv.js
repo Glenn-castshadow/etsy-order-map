@@ -179,21 +179,16 @@ export function aggregateRows(rows, zipIdx, countIdx, dateIdx = -1, fromDate = n
 // ── Payments CSV (Etsy Direct Checkout Payments) ───────────────────────────
 
 /**
- * Aggregate Etsy payments rows into the data the PaymentsView needs.
- * Optionally filtered by date range (YYYY-MM-DD inclusive).
+ * Aggregate Etsy payments rows across one or more files into the data the
+ * PaymentsView needs.  Each file resolves its column indices independently
+ * from its own headers, so files with re-ordered columns still combine
+ * correctly.  Optionally filtered by date range (YYYY-MM-DD inclusive).
+ *
+ * @param {Array<{headers: string[], rows: string[][]}>} files
+ * @param {string|null} fromDate
+ * @param {string|null} toDate
  */
-export function aggregatePayments(headers, rows, fromDate = null, toDate = null) {
-  const idx = (name) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
-  const iGross   = idx('Gross Amount');
-  const iFees    = idx('Fees');
-  const iNet     = idx('Net Amount');
-  const iRefund  = idx('Refund Amount');
-  const iDate    = idx('Order Date');
-  const iBuyer   = idx('Buyer');                // fallback for blank Buyer Name
-  const iBuyerNm = idx('Buyer Name');
-  const iStatus  = idx('Status');
-  const iCur     = idx('Currency');
-
+export function aggregatePayments(files, fromDate = null, toDate = null) {
   const totals = { gross: 0, fees: 0, net: 0, refund: 0, orderCount: 0 };
   const byMonth = new Map();   // 'YYYY-MM' → { gross, fees, net, refund, count }
   const byBuyer = new Map();   // buyer → { gross, count }
@@ -201,46 +196,61 @@ export function aggregatePayments(headers, rows, fromDate = null, toDate = null)
   let minDate = null, maxDate = null;
   let currency = null;
 
-  for (const row of rows) {
-    const date = parseIsoDate(row[iDate]);
-    if (!date) continue;
-    if (fromDate && date < fromDate) continue;
-    if (toDate   && date > toDate)   continue;
+  for (const file of files) {
+    const headers = file.headers;
+    const rows    = file.rows;
+    const idx = (name) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+    const iGross   = idx('Gross Amount');
+    const iFees    = idx('Fees');
+    const iNet     = idx('Net Amount');
+    const iRefund  = idx('Refund Amount');
+    const iDate    = idx('Order Date');
+    const iBuyer   = idx('Buyer');                // fallback for blank Buyer Name
+    const iBuyerNm = idx('Buyer Name');
+    const iStatus  = idx('Status');
+    const iCur     = idx('Currency');
 
-    const gross  = +parseFloat(row[iGross])  || 0;
-    const fees   = +parseFloat(row[iFees])   || 0;
-    const net    = +parseFloat(row[iNet])    || 0;
-    const refund = +parseFloat(row[iRefund]) || 0;
+    for (const row of rows) {
+      const date = parseIsoDate(row[iDate]);
+      if (!date) continue;
+      if (fromDate && date < fromDate) continue;
+      if (toDate   && date > toDate)   continue;
 
-    totals.gross  += gross;
-    totals.fees   += fees;
-    totals.net    += net;
-    totals.refund += refund;
-    totals.orderCount += 1;
+      const gross  = +parseFloat(row[iGross])  || 0;
+      const fees   = +parseFloat(row[iFees])   || 0;
+      const net    = +parseFloat(row[iNet])    || 0;
+      const refund = +parseFloat(row[iRefund]) || 0;
 
-    if (!minDate || date < minDate) minDate = date;
-    if (!maxDate || date > maxDate) maxDate = date;
-    if (!currency && iCur >= 0) currency = (row[iCur] || '').trim() || null;
+      totals.gross  += gross;
+      totals.fees   += fees;
+      totals.net    += net;
+      totals.refund += refund;
+      totals.orderCount += 1;
 
-    const ym = date.slice(0, 7);
-    const m = byMonth.get(ym) ?? { gross: 0, fees: 0, net: 0, refund: 0, count: 0 };
-    m.gross  += gross;
-    m.fees   += fees;
-    m.net    += net;
-    m.refund += refund;
-    m.count  += 1;
-    byMonth.set(ym, m);
+      if (!minDate || date < minDate) minDate = date;
+      if (!maxDate || date > maxDate) maxDate = date;
+      if (!currency && iCur >= 0) currency = (row[iCur] || '').trim() || null;
 
-    const buyerRaw = (iBuyer >= 0 ? row[iBuyer] : '') || (iBuyerNm >= 0 ? row[iBuyerNm] : '') || '—';
-    const buyer = String(buyerRaw).trim() || '—';
-    const b = byBuyer.get(buyer) ?? { gross: 0, count: 0 };
-    b.gross += gross;
-    b.count += 1;
-    byBuyer.set(buyer, b);
+      const ym = date.slice(0, 7);
+      const m = byMonth.get(ym) ?? { gross: 0, fees: 0, net: 0, refund: 0, count: 0 };
+      m.gross  += gross;
+      m.fees   += fees;
+      m.net    += net;
+      m.refund += refund;
+      m.count  += 1;
+      byMonth.set(ym, m);
 
-    if (iStatus >= 0) {
-      const s = String(row[iStatus] || '—').trim();
-      byStatus.set(s, (byStatus.get(s) ?? 0) + 1);
+      const buyerRaw = (iBuyer >= 0 ? row[iBuyer] : '') || (iBuyerNm >= 0 ? row[iBuyerNm] : '') || '—';
+      const buyer = String(buyerRaw).trim() || '—';
+      const b = byBuyer.get(buyer) ?? { gross: 0, count: 0 };
+      b.gross += gross;
+      b.count += 1;
+      byBuyer.set(buyer, b);
+
+      if (iStatus >= 0) {
+        const s = String(row[iStatus] || '—').trim();
+        byStatus.set(s, (byStatus.get(s) ?? 0) + 1);
+      }
     }
   }
 

@@ -36,10 +36,11 @@ for (const { zip, lat, lon, state, city } of zipCentroids) {
 }
 
 export default function App() {
-  // csvFiles: array of sniffed CSV files in the import pool.
-  // Each entry: { id, name, headers, rows, zipIdx, countIdx, dateIdx, confidence, kind }
+  // csvFiles: array of sniffed CSV files in the import pool.  All files in
+  // the pool are the same `kind` — adding a file of a different kind clears
+  // the pool first.  Each entry: { id, name, headers, rows, zipIdx, countIdx,
+  // dateIdx, confidence, kind }
   const [csvFiles, setCsvFiles]           = useState([]);
-  const [paymentsRaw, setPaymentsRaw]     = useState(null); // { headers, rows } for Etsy Payments CSV
   const [selectedRange, setSelectedRange] = useState({ from: '', to: '' });
   const [activeStyleId, setActiveStyleId] = useState(styles[0].id);
   const [scaleMode, setScaleMode]         = useState('linear');
@@ -61,35 +62,39 @@ export default function App() {
     return zipLookup.get(originZip.padStart(5, '0')) ?? null;
   }, [originZip]);
 
+  const isPaymentsMode = csvFiles[0]?.kind === 'etsy-payments';
+
   const dateRange = useMemo(() => {
-    if (paymentsRaw) {
-      const dateIdx = paymentsRaw.headers.findIndex(h => h.toLowerCase() === 'order date');
-      if (dateIdx < 0) return null;
-      const dates = paymentsRaw.rows
-        .map(r => parseIsoDate(r[dateIdx]))
-        .filter(Boolean)
-        .sort();
-      if (!dates.length) return null;
-      return { min: dates[0], max: dates[dates.length - 1] };
-    }
     if (!csvFiles.length) return null;
     const allDates = [];
-    for (const file of csvFiles) {
-      if (file.dateIdx < 0) continue;
-      for (const row of file.rows) {
-        const d = parseIsoDate(row[file.dateIdx]);
-        if (d) allDates.push(d);
+    if (isPaymentsMode) {
+      for (const file of csvFiles) {
+        const di = file.headers.findIndex(h => h.toLowerCase() === 'order date');
+        if (di < 0) continue;
+        for (const row of file.rows) {
+          const d = parseIsoDate(row[di]);
+          if (d) allDates.push(d);
+        }
+      }
+    } else {
+      for (const file of csvFiles) {
+        if (file.dateIdx < 0) continue;
+        for (const row of file.rows) {
+          const d = parseIsoDate(row[file.dateIdx]);
+          if (d) allDates.push(d);
+        }
       }
     }
     if (!allDates.length) return null;
     allDates.sort();
     return { min: allDates[0], max: allDates[allDates.length - 1] };
-  }, [csvFiles, paymentsRaw]);
+  }, [csvFiles, isPaymentsMode]);
 
-  // Combined zip→count across all files, with date filter applied per-file
-  // so each file uses its own dateIdx mapping.
+  // Combined zip→count across all order files, with date filter applied
+  // per-file so each file uses its own dateIdx mapping.  Empty in payments
+  // mode.
   const csvData = useMemo(() => {
-    if (!csvFiles.length) return [];
+    if (!csvFiles.length || isPaymentsMode) return [];
     const combined = new Map();
     for (const file of csvFiles) {
       const aggregated = aggregateRows(
@@ -101,15 +106,15 @@ export default function App() {
       }
     }
     return [...combined.entries()].map(([zip, count]) => ({ zip, count }));
-  }, [csvFiles, selectedRange.from, selectedRange.to]);
+  }, [csvFiles, isPaymentsMode, selectedRange.from, selectedRange.to]);
 
   const payments = useMemo(() => {
-    if (!paymentsRaw) return null;
+    if (!isPaymentsMode) return null;
     return aggregatePayments(
-      paymentsRaw.headers, paymentsRaw.rows,
+      csvFiles,
       selectedRange.from || null, selectedRange.to || null,
     );
-  }, [paymentsRaw, selectedRange.from, selectedRange.to]);
+  }, [csvFiles, isPaymentsMode, selectedRange.from, selectedRange.to]);
 
   const { heatPoints, matched, unmatched, total } = useMemo(() => {
     if (!csvData.length) return { heatPoints: [], matched: 0, unmatched: 0, total: 0 };
@@ -171,25 +176,30 @@ export default function App() {
       const sniff = await sniffCsv(file);
       if (!sniff.rows.length) throw new Error('No rows found in file.');
 
-      // Etsy Payments CSV switches to the payments dashboard and clears
-      // any order-style files already in the pool.
-      if (sniff.kind === 'etsy-payments') {
-        setCsvFiles([]);
-        setSelectedRange({ from: '', to: '' });
-        setPaymentsRaw({ headers: sniff.headers, rows: sniff.rows });
-        return;
+      // For order CSVs, sanity-check that ZIPs actually resolve.
+      if (sniff.kind !== 'etsy-payments') {
+        const test = aggregateRows(sniff.rows, sniff.zipIdx, sniff.countIdx);
+        if (!test.length) throw new Error('No valid ZIP codes found in the detected column.');
       }
 
-      // Sanity-check that at least one valid ZIP would resolve before we
-      // append the file — otherwise the import looks broken.
-      const test = aggregateRows(sniff.rows, sniff.zipIdx, sniff.countIdx);
-      if (!test.length) throw new Error('No valid ZIP codes found in the detected column.');
+      const newKind = sniff.kind === 'etsy-payments' ? 'etsy-payments' : 'orders';
+      const entry = {
+        id:   `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name: file.name,
+        ...sniff,
+        kind: newKind,
+      };
 
-      setPaymentsRaw(null);
-      setCsvFiles(prev => [
-        ...prev,
-        { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, ...sniff },
-      ]);
+      setCsvFiles(prev => {
+        const currentKind = prev[0]?.kind ?? newKind;
+        // Mode switch — clear the pool and reset filters when the new file's
+        // kind differs from what's already loaded.
+        if (currentKind !== newKind) {
+          setSelectedRange({ from: '', to: '' });
+          return [entry];
+        }
+        return [...prev, entry];
+      });
     } catch (e) {
       setError(e.message ?? 'Failed to parse CSV.');
     }
@@ -233,8 +243,7 @@ export default function App() {
   const ActiveStyle = styles.find(s => s.id === activeStyleId)?.component;
   const arcsActive  = activeStyleId === 'arcs';
   const needsOrigin = arcsActive && heatPoints.length > 0 && !originEntry;
-  const isPaymentsMode = !!paymentsRaw;
-  const firstFile      = csvFiles[0] ?? null; // drives the ColumnMapper UI
+  const firstFile = csvFiles[0] ?? null; // drives the ColumnMapper UI
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-900 text-white">
@@ -260,16 +269,21 @@ export default function App() {
                 Try with sample data →
               </button>
             )}
-            {csvFiles.length > 1 && (
+            {csvFiles.length > 1 && !isPaymentsMode && (
               <p className="text-xs text-slate-500">
                 Combined: {csvData.length.toLocaleString()} unique ZIP{csvData.length !== 1 ? 's' : ''}
+              </p>
+            )}
+            {csvFiles.length > 1 && isPaymentsMode && payments && (
+              <p className="text-xs text-slate-500">
+                Combined: {payments.totals.orderCount.toLocaleString()} payment{payments.totals.orderCount !== 1 ? 's' : ''}
               </p>
             )}
           </div>
         </CollapsibleSection>
 
-        {/* ── Columns ── */}
-        {firstFile?.headers && (
+        {/* ── Columns (orders mode only) ── */}
+        {!isPaymentsMode && firstFile?.headers && (
           <CollapsibleSection title="Columns">
             <ColumnMapper
               headers={firstFile.headers}
