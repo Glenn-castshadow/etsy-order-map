@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
@@ -9,6 +9,7 @@ import DropZone from './components/DropZone.jsx';
 import ColumnMapper from './components/ColumnMapper.jsx';
 import StyleSwitcher from './components/StyleSwitcher.jsx';
 import Legend from './components/Legend.jsx';
+import ExportButtons from './components/ExportButtons.jsx';
 import { sniffCsv, aggregateRows } from './utils/parseCsv.js';
 
 // Built once at module load — O(1) lookup by 5-digit string zip
@@ -60,6 +61,7 @@ export default function App() {
   }
 
   const ActiveStyle = styles.find(s => s.id === activeStyleId)?.component;
+  const mapRef = useRef(null);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-900 text-white">
@@ -93,13 +95,17 @@ export default function App() {
           <Legend matched={matched} unmatched={unmatched} total={total} />
         )}
 
+        {heatPoints.length > 0 && (
+          <ExportButtons mapRef={mapRef} />
+        )}
+
         <div className="mt-auto text-xs text-slate-600">
           {zipLookup.size.toLocaleString()} ZIP codes indexed
         </div>
       </aside>
 
       {/* ── Map ── */}
-      <main className="flex-1 relative">
+      <main ref={mapRef} className="flex-1 relative">
         <MapContainer
           center={[39.5, -98.35]}
           zoom={4}
@@ -111,6 +117,7 @@ export default function App() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
             subdomains="abcd"
             maxZoom={19}
+            crossOrigin="anonymous"
           />
           {ActiveStyle && heatPoints.length > 0 && (
             <ActiveStyle data={heatPoints} />
