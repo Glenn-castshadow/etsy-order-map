@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Marker } from 'react-leaflet';
 import L from 'leaflet';
 import pinUrl from '../../images/Asset 1.png';
@@ -98,19 +98,23 @@ function PushpinLayer({ data, origin }) {
     return removeStyle;
   }, []);
 
-  const { lodData } = useLodData(data);
-  const originPt    = origin ? [origin.lat, origin.lng] : null;
+  const { lodData, sorted } = useLodData(data);
+  const originPt = origin ? [origin.lat, origin.lng] : null;
 
-  // Compute per-point distance from origin for staggered cascade
-  const distances = lodData.map(({ lat, lng }) =>
-    originPt ? latLngDist([lat, lng], originPt) : 0
-  );
-  const maxDist = Math.max(...distances, 1);
+  // Derive the global max-distance from the FULL sorted set so the delay
+  // for every pin is fixed at load time and never changes as LOD adds pins
+  // on zoom-in.  Without this, maxDist shifts on every zoom step and every
+  // existing pin gets a new delay → icon rebuild → animation restart (stutter).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const globalMaxDist = useMemo(() => {
+    if (!originPt) return 1;
+    return Math.max(...sorted.map(({ lat, lng }) => latLngDist([lat, lng], originPt)), 1);
+  }, [sorted, origin?.lat, origin?.lng]);
 
   return lodData.map(({ lat, lng, weight }, i) => {
     const delay = originPt
-      ? (distances[i] / maxDist) * MAX_STAGGER
-      : i * (MAX_STAGGER / Math.max(lodData.length, 1));
+      ? (latLngDist([lat, lng], originPt) / globalMaxDist) * MAX_STAGGER
+      : (i / Math.max(sorted.length - 1, 1)) * MAX_STAGGER;
 
     return (
       <Marker

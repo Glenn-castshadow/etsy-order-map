@@ -37,6 +37,7 @@ export function useLodData(data) {
 
   return {
     lodData:     sorted.slice(0, count),
+    sorted,          // full weight-sorted array — stable for global timing
     zoom,
     lodFraction,
     total:       sorted.length,
