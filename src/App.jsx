@@ -14,6 +14,7 @@ import Legend from './components/Legend.jsx';
 import ExportButtons from './components/ExportButtons.jsx';
 import StatCards from './components/StatCards.jsx';
 import TopStatesPanel from './components/TopStatesPanel.jsx';
+import ScaleSwitcher from './components/ScaleSwitcher.jsx';
 import { sniffCsv, aggregateRows, parseIsoDate } from './utils/parseCsv.js';
 
 const zipLookup      = new Map();
@@ -30,6 +31,7 @@ export default function App() {
   const [csvData, setCsvData]             = useState([]);
   const [selectedRange, setSelectedRange] = useState({ from: '', to: '' });
   const [activeStyleId, setActiveStyleId] = useState(styles[0].id);
+  const [scaleMode, setScaleMode]         = useState('linear');
   const [fileName, setFileName]           = useState(null);
   const [error, setError]                 = useState(null);
   const [originZip, setOriginZip]         = useState(
@@ -54,17 +56,38 @@ export default function App() {
 
   const { heatPoints, matched, unmatched, total } = useMemo(() => {
     if (!csvData.length) return { heatPoints: [], matched: 0, unmatched: 0, total: 0 };
+
     const maxCount = Math.max(...csvData.map(d => d.count));
+    const logMax   = Math.log(maxCount + 1);
     let matched = 0, unmatched = 0, total = 0;
-    const heatPoints = csvData.flatMap(({ zip, count }) => {
+
+    // Geocode first, collect resolved points
+    const resolved = [];
+    for (const { zip, count } of csvData) {
       total += count;
       const loc = zipLookup.get(zip);
-      if (!loc) { unmatched++; return []; }
+      if (!loc) { unmatched++; continue; }
       matched++;
-      return [{ lat: loc.lat, lng: loc.lng, weight: count / maxCount }];
-    });
+      resolved.push({ lat: loc.lat, lng: loc.lng, count });
+    }
+
+    // Apply scale mode
+    let heatPoints;
+    if (scaleMode === 'rank') {
+      const sorted = [...resolved].sort((a, b) => a.count - b.count);
+      const n = sorted.length;
+      heatPoints = sorted.map((p, i) => ({ lat: p.lat, lng: p.lng, weight: (i + 1) / n }));
+    } else {
+      heatPoints = resolved.map(p => ({
+        lat: p.lat, lng: p.lng,
+        weight: scaleMode === 'log'
+          ? Math.log(p.count + 1) / logMax
+          : p.count / maxCount,
+      }));
+    }
+
     return { heatPoints, matched, unmatched, total };
-  }, [csvData]);
+  }, [csvData, scaleMode]);
 
   const stats = useMemo(() => {
     if (!csvData.length) return null;
@@ -174,6 +197,10 @@ export default function App() {
             onChange={handleOriginZip}
             isValid={!!originEntry}
           />
+        )}
+
+        {heatPoints.length > 0 && (
+          <ScaleSwitcher active={scaleMode} onChange={setScaleMode} />
         )}
 
         {heatPoints.length > 0 && (
