@@ -1,18 +1,139 @@
-# etsy-order-map
+# Etsy Order Map v0.1.0
 
-Map Etsy customer orders to a ZIP code heatmap.
+A desktop app that maps Etsy customer orders onto a US ZIP code heatmap. Drop in your Etsy order CSV export — column names are auto-detected — and instantly see where your customers are concentrated.
 
-Built with React + Vite, react-leaflet, leaflet.heat, PapaParse, and Tailwind CSS.
+Built with React + Vite inside a Tauri v2 desktop wrapper. Runs on Windows (macOS and Linux supported by Tauri).
 
-## Usage
+---
 
-1. Export orders from Etsy (CSV)
-2. Drop the file onto the map — `Ship Zipcode` and `Quantity` are auto-detected
-3. Adjust column mapping in the sidebar if needed
+## Features
 
-## Dev
+- **Drag-and-drop CSV import** — drop any Etsy order export directly onto the app
+- **Auto column detection** — `Ship Zipcode` and `Quantity` are recognized by name; falls back to regex for generic CSVs
+- **Column mapper** — sidebar dropdowns let you override the detected ZIP and count columns live
+- **Two map styles**, switchable without reloading:
+  - **Heatmap** — density surface via `leaflet.heat`
+  - **Bubbles** — circle markers sized and colored by order weight
+- **Export** — save the current map view as PNG or JPEG
+- **42,354 US ZIP centroids** bundled — no network call needed for lookups
+- **Tauri desktop app** — native window, ships as a standalone `.exe` installer
+
+---
+
+## CSV format
+
+The app accepts any CSV with at least a ZIP code column. Both formats work:
+
+```
+zip
+10001
+90210
+60601
+```
+
+```
+Ship Zipcode,Quantity
+10001,3
+90210,1
+60601,2
+```
+
+Recognized ZIP column names: `Ship Zipcode`, `Zip`, `Zip Code`, `Postal Code`, `Shipping Zip`, and more.  
+Recognized count column names: `Quantity`, `Count`, `Qty`, `Orders`, `Sales`, and more.
+
+Duplicate ZIP codes are aggregated automatically.
+
+---
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) 18+
+- [Rust](https://rustup.rs/) (for Tauri desktop builds)
+- Windows: WebView2 runtime (pre-installed on Windows 10/11)
+
+---
+
+## Development
 
 ```bash
+# Install dependencies
 npm install
+
+# Start the web dev server only (browser)
 npm run dev
+
+# Start the Tauri desktop app with hot reload
+npm run tauri:dev
 ```
+
+The web dev server runs on `http://localhost:5174`.
+
+---
+
+## Building a distributable
+
+```bash
+npm run tauri:build
+```
+
+Output is written to `src-tauri/target/release/bundle/`:
+
+| File | Description |
+|------|-------------|
+| `nsis/*.exe` | NSIS installer (recommended for distribution) |
+| `msi/*.msi` | MSI installer |
+
+The first build downloads and compiles Rust dependencies (~5–10 min). Subsequent builds are incremental.
+
+---
+
+## Project structure
+
+```
+src/
+├── data/
+│   └── zipCentroids.json     42,354 ZIP centroids [{zip, city, state, lat, lon}]
+├── mapStyles/
+│   ├── index.js              style registry
+│   ├── heatmap.js            leaflet.heat layer
+│   └── bubbles.jsx           CircleMarker layer
+├── components/
+│   ├── DropZone.jsx          drag-and-drop file import
+│   ├── ColumnMapper.jsx      live column assignment dropdowns
+│   ├── StyleSwitcher.jsx     style tab buttons
+│   ├── Legend.jsx            match counts + gradient bar
+│   └── ExportButtons.jsx     PNG / JPEG download
+├── utils/
+│   ├── parseCsv.js           PapaParse wrapper — sniff + aggregate
+│   └── exportMap.js          html2canvas capture + download
+└── App.jsx
+src-tauri/                    Tauri v2 Rust backend
+```
+
+### Adding a new map style
+
+1. Create `src/mapStyles/myStyle.jsx` — export `{ id, label, component }`
+2. The component receives `{ data }`: an array of `{ lat, lng, weight }` (weight normalized 0–1)
+3. Import and add it to the `styles` array in `src/mapStyles/index.js`
+
+The StyleSwitcher and App wire up automatically.
+
+---
+
+## Tech stack
+
+| Library | Purpose |
+|---------|---------|
+| [React 19](https://react.dev/) + [Vite 8](https://vite.dev/) | UI framework + dev server |
+| [Tauri v2](https://tauri.app/) | Desktop wrapper (Rust backend) |
+| [react-leaflet](https://react-leaflet.js.org/) | Map container + tile layer |
+| [leaflet.heat](https://github.com/Leaflet/Leaflet.heat) | Heatmap rendering |
+| [PapaParse](https://www.papaparse.com/) | CSV parsing |
+| [html2canvas](https://html2canvas.hertzen.com/) | Map export |
+| [Tailwind CSS v4](https://tailwindcss.com/) | Styling |
+
+---
+
+## License
+
+MIT
