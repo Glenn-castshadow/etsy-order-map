@@ -18,6 +18,7 @@ import ScaleSwitcher from './components/ScaleSwitcher.jsx';
 import BaseMapToggle from './components/BaseMapToggle.jsx';
 import GlobeView from './components/GlobeView.jsx';
 import { sniffCsv, aggregateRows, parseIsoDate } from './utils/parseCsv.js';
+import logoSmall from '../images/logo_small.png';
 
 const zipLookup      = new Map();
 const zipStateLookup = new Map();
@@ -160,10 +161,7 @@ export default function App() {
     <div className="flex h-screen w-screen overflow-hidden bg-slate-900 text-white">
       {/* ── Sidebar ── */}
       <aside className="w-64 flex-shrink-0 flex flex-col gap-5 p-4 bg-slate-800 border-r border-slate-700 overflow-y-auto">
-        <div>
-          <h1 className="text-lg font-bold tracking-tight text-white">ZipMap</h1>
-          <p className="text-xs text-slate-400 mt-0.5">US ZIP code heatmap</p>
-        </div>
+        <img src={logoSmall} alt="ZipMap" className="h-10 w-auto" />
 
         <DropZone onFile={handleFile} fileName={fileName} error={error} />
 
