@@ -21,13 +21,20 @@ const hookPath = path.join(gitDir, 'hooks', 'pre-push');
 
 const script = `#!/bin/sh
 # Auto-bump patch version before every push.
-# Staged version files are committed and included in the same push.
+# Guard: if HEAD is already a version-bump commit we are just pushing that
+# commit — exit early to prevent an infinite cascade.
 REPO_ROOT=$(git rev-parse --show-toplevel)
 cd "$REPO_ROOT"
+
+HEAD_MSG=$(git log -1 --format="%s" HEAD)
+case "$HEAD_MSG" in
+  "Bump version to"*) exit 0 ;;
+esac
+
 node scripts/bump-version.js
 git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml README.md
 git diff --cached --quiet && exit 0
-VERSION=$(node -p "require('./package.json').version")
+VERSION=$(grep '"version"' package.json | head -1 | sed 's/.*"version": "\\([^"]*\\)".*/\\1/')
 git commit --no-verify -m "Bump version to $VERSION"
 `;
 
