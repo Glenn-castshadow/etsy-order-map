@@ -15,7 +15,8 @@ function HeatmapLayer({ data }) {
         radius: 25,
         blur: 15,
         maxZoom: 17,
-        gradient: { 0.35: '#0000ff', 0.6: '#00ffff', 0.8: '#ffff00', 1: '#ff0000' },
+        minOpacity: 0.4,
+        gradient: { 0: '#0000ff', 0.3: '#00ffff', 0.65: '#ffff00', 1: '#ff0000' },
       }
     ).addTo(map);
 
