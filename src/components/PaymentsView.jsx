@@ -27,7 +27,7 @@ const fmtMonth = (ym) => {
 };
 
 export default function PaymentsView({ payments }) {
-  const { totals, months, topBuyers, statusBreakdown, currency } = payments;
+  const { totals, months, topBuyers, topProducts = [], statusBreakdown, currency } = payments;
   const feeRate = totals.gross > 0 ? (totals.fees / totals.gross) * 100 : 0;
   const refundRate = totals.gross > 0 ? (totals.refund / totals.gross) * 100 : 0;
 
@@ -71,6 +71,13 @@ export default function PaymentsView({ payments }) {
               : <Empty>No rows.</Empty>}
           </Panel>
         </div>
+
+        {/* Top products — only shown when the CSV had Item Name or SKU info */}
+        {topProducts.length > 0 && (
+          <Panel title="Top 10 Products">
+            <TopProductsTable products={topProducts} currency={currency} />
+          </Panel>
+        )}
 
       </div>
     </div>
@@ -200,6 +207,39 @@ function TopBuyersTable({ buyers, currency }) {
             </div>
             <span className="w-20 text-right tabular-nums text-slate-200">{fmtMoneyPrecise(b.gross, currency)}</span>
             <span className="w-12 text-right tabular-nums text-slate-500">{b.count}×</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TopProductsTable({ products, currency }) {
+  const maxRevenue = Math.max(...products.map(p => p.revenue), 1);
+  return (
+    <div className="flex flex-col">
+      {/* Header */}
+      <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-slate-500 pb-2 border-b border-slate-800 mb-1">
+        <span className="w-5 text-right">#</span>
+        <span className="flex-1">Product</span>
+        <span className="w-16 text-right">Units</span>
+        <span className="w-20 text-right">Revenue</span>
+        <span className="w-14 text-right">Orders</span>
+      </div>
+      {products.map((p, i) => {
+        const pct = (p.revenue / maxRevenue) * 100;
+        return (
+          <div key={(p.listingId || p.sku || '') + p.name + i} className="flex items-center gap-3 text-xs py-1.5 border-b border-slate-800/60 last:border-0">
+            <span className="text-slate-600 w-5 text-right tabular-nums">{i + 1}</span>
+            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+              <span className="truncate text-slate-200" title={p.name}>{p.name}</span>
+              <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-violet-500 to-amber-400" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+            <span className="w-16 text-right tabular-nums text-slate-200">{p.quantity.toLocaleString()}</span>
+            <span className="w-20 text-right tabular-nums text-emerald-400">{fmtMoneyPrecise(p.revenue, currency)}</span>
+            <span className="w-14 text-right tabular-nums text-slate-500">{p.orderCount}×</span>
           </div>
         );
       })}

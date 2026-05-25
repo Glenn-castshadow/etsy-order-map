@@ -10,6 +10,8 @@ const METRIC_HINTS = {
   'Order Net':                 'net sale amount',
   'Order Value':               'sale amount',
   'Adjusted Net Order Amount': 'net sale amount',
+  'Item Total':                'item sale amount',
+  'Price':                     'item price',
   'Gross Amount':              'gross revenue',
   'Net Amount':                'net revenue',
   'Total':                     'total amount',

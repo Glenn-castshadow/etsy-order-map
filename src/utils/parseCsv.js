@@ -190,9 +190,10 @@ export function aggregateRows(rows, zipIdx, countIdx, dateIdx = -1, fromDate = n
  */
 export function aggregatePayments(files, fromDate = null, toDate = null) {
   const totals = { gross: 0, fees: 0, net: 0, refund: 0, orderCount: 0 };
-  const byMonth = new Map();   // 'YYYY-MM' → { gross, fees, net, refund, count }
-  const byBuyer = new Map();   // buyer → { gross, count }
-  const byStatus = new Map();  // status → count
+  const byMonth   = new Map();   // 'YYYY-MM' → { gross, fees, net, refund, count }
+  const byBuyer   = new Map();   // buyer → { gross, count }
+  const byStatus  = new Map();   // status → count
+  const byProduct = new Map();   // item name (or SKU) → { name, sku, listingId, quantity, revenue, orderCount }
   let minDate = null, maxDate = null;
   let currency = null;
 
@@ -208,7 +209,7 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
       }
       return -1;
     };
-    const iGross   = idxAny('Gross Amount', 'Order Total', 'Order Value');
+    const iGross   = idxAny('Gross Amount', 'Order Total', 'Item Total', 'Order Value');
     const iFees    = idxAny('Fees', 'Card Processing Fees');
     const iNet     = idxAny('Net Amount', 'Order Net', 'Adjusted Net Order Amount');
     const iRefund  = idxAny('Refund Amount');
@@ -217,6 +218,11 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
     const iBuyerNm = idxAny('Buyer Name', 'Full Name');
     const iStatus  = idxAny('Status');
     const iCur     = idxAny('Currency');
+    // Product-level columns (Etsy Sold Order Items CSV)
+    const iItemNm  = idxAny('Item Name', 'Product', 'Title');
+    const iQty     = idxAny('Quantity', 'Qty', 'Number of Items');
+    const iSku     = idxAny('SKU');
+    const iListing = idxAny('Listing ID');
 
     for (const row of rows) {
       const date = parseIsoDate(row[iDate]);
@@ -259,6 +265,29 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
         const s = String(row[iStatus] || '—').trim();
         byStatus.set(s, (byStatus.get(s) ?? 0) + 1);
       }
+
+      // Per-product aggregation — works when the file has Item Name or SKU
+      const productName = iItemNm >= 0 ? String(row[iItemNm] || '').trim() : '';
+      const productSku  = iSku    >= 0 ? String(row[iSku]    || '').trim() : '';
+      const productKey  = productName || productSku;
+      if (productKey) {
+        const qty = iQty >= 0 ? +parseFloat(row[iQty]) || 1 : 1;
+        let p = byProduct.get(productKey);
+        if (!p) {
+          p = {
+            name:       productName || productSku,
+            sku:        productSku,
+            listingId:  iListing >= 0 ? String(row[iListing] || '').trim() : '',
+            quantity:   0,
+            revenue:    0,
+            orderCount: 0,
+          };
+          byProduct.set(productKey, p);
+        }
+        p.quantity   += qty;
+        p.revenue    += gross;
+        p.orderCount += 1;
+      }
     }
   }
 
@@ -277,12 +306,19 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
     .map(([status, count]) => ({ status, count }))
     .sort((a, b) => b.count - a.count);
 
+  // Top 10 products by revenue (only populated when the import had Item
+  // Name or SKU columns — i.e. an Etsy Sold Order Items CSV).
+  const topProducts = [...byProduct.values()]
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+
   totals.avgOrder = totals.orderCount > 0 ? totals.gross / totals.orderCount : 0;
 
   return {
     totals,
     months,
     topBuyers,
+    topProducts,
     statusBreakdown,
     dateRange: minDate && maxDate ? { min: minDate, max: maxDate } : null,
     currency: currency ?? 'USD',
@@ -328,9 +364,10 @@ export function aggregateZipDetails(files, fromDate = null, toDate = null) {
       }
       return -1;
     };
-    const iCustomer = idxAny('Full Name', 'Buyer Name', 'Buyer', 'Customer');
-    const iTotal    = idxAny('Order Total', 'Order Value', 'Total', 'Gross Amount');
-    const iSku      = idxAny('SKU', 'Product', 'Item');
+    const iCustomer = idxAny('Full Name', 'Ship Name', 'Buyer Name', 'Buyer', 'Customer');
+    const iTotal    = idxAny('Item Total', 'Order Total', 'Order Value', 'Total', 'Gross Amount');
+    const iItemNm   = idxAny('Item Name', 'Product', 'Title');
+    const iSku      = idxAny('SKU', 'Item');
     const iCity     = idxAny('Ship City', 'City');
     const iState    = idxAny('Ship State', 'State');
 
@@ -363,14 +400,16 @@ export function aggregateZipDetails(files, fromDate = null, toDate = null) {
       const total    = iTotal    >= 0 ? +parseFloat(row[iTotal])    || 0 : 0;
       const items    = countIdx  >= 0 ? +parseFloat(row[countIdx])  || 1 : 1;
       const customer = iCustomer >= 0 ? String(row[iCustomer] || '').trim() : '';
+      const itemName = iItemNm   >= 0 ? String(row[iItemNm] || '').trim() : '';
       const sku      = iSku      >= 0 ? String(row[iSku] || '').trim() : '';
+      const product  = itemName || sku;
       const date     = dateIdx   >= 0 ? parseIsoDate(row[dateIdx]) : null;
 
-      entry.orders.push({ date, customer: customer || '—', items, total, sku });
+      entry.orders.push({ date, customer: customer || '—', items, total, product, sku: product });
       entry.totalValue += total;
       entry.totalItems += items;
       if (customer) entry.customers.add(customer);
-      if (sku)      entry.skus.add(sku);
+      if (product)  entry.skus.add(product);
     }
   }
 

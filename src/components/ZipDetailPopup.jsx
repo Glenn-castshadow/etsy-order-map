@@ -85,9 +85,9 @@ export default function ZipDetailPopup({ detail, onClose }) {
         )}
 
         {topSkus.length > 0 && (
-          <Section title="Products Sold">
-            {topSkus.map(([sku, qty]) => (
-              <Row key={sku} left={sku} right={`${qty}×`} />
+          <Section title="Top Products">
+            {topSkus.map(([prod, qty]) => (
+              <Row key={prod} left={prod} right={`${qty}×`} />
             ))}
           </Section>
         )}
