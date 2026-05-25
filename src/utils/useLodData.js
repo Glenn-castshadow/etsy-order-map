@@ -7,13 +7,11 @@ import { useMap, useMapEvents } from 'react-leaflet';
  * Sorts data by weight descending so the highest-count ZIPs are always
  * rendered first. The visible fraction grows linearly with zoom:
  *
- *   zoom  4  →  ~14 %   (national overview)
- *   zoom  5  →  ~29 %
- *   zoom  6  →  ~43 %
- *   zoom  7  →  ~57 %
- *   zoom  8  →  ~71 %
- *   zoom  9  →  ~86 %
- *   zoom 10+ → 100 %   (local / street level)
+ *   zoom 4  → 60 %   (national overview)
+ *   zoom 5  → 70 %
+ *   zoom 6  → 80 %
+ *   zoom 7  → 90 %
+ *   zoom 8+ → 100 %  (metro / local)
  *
  * Always shows at least min(5, data.length) markers so the map is never
  * completely empty on low-data datasets.
@@ -33,7 +31,8 @@ export function useLodData(data) {
     [data],
   );
 
-  const lodFraction = Math.min(1, Math.max(0.10, (zoom - 3) / 7));
+  // 60 % at zoom 4, +10 % per zoom step, capped at 100 % from zoom 8 up
+  const lodFraction = Math.min(1, 0.60 + Math.max(0, zoom - 4) * 0.10);
   const count       = Math.max(Math.min(5, sorted.length), Math.ceil(sorted.length * lodFraction));
 
   return {
