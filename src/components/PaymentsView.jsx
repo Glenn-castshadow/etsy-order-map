@@ -27,7 +27,7 @@ const fmtMonth = (ym) => {
 };
 
 export default function PaymentsView({ payments, kind = 'orders' }) {
-  const { totals, months, topBuyers, topProducts = [], statusBreakdown, currency } = payments;
+  const { totals, months, topBuyers, topProducts = [], weekdayBreakdown = [], currency } = payments;
   const isDeposits = kind === 'etsy-deposits';
   const feeRate    = totals.gross > 0 ? (totals.fees   / totals.gross) * 100 : 0;
   const refundRate = totals.gross > 0 ? (totals.refund / totals.gross) * 100 : 0;
@@ -80,8 +80,8 @@ export default function PaymentsView({ payments, kind = 'orders' }) {
             : <Empty>No dated rows in range.</Empty>}
         </Panel>
 
-        {/* Top buyers + status row — only show buyers panel when populated */}
-        {(topBuyers.length > 0 || statusBreakdown.length > 0) && (
+        {/* Top buyers + weekday row */}
+        {(topBuyers.length > 0 || weekdayBreakdown.some(d => d.count > 0)) && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {topBuyers.length > 0 && (
               <div className="lg:col-span-2">
@@ -90,10 +90,12 @@ export default function PaymentsView({ payments, kind = 'orders' }) {
                 </Panel>
               </div>
             )}
-            {statusBreakdown.length > 0 && (
-              <Panel title="Status">
-                <StatusBreakdown rows={statusBreakdown} total={totals.orderCount} />
-              </Panel>
+            {weekdayBreakdown.some(d => d.count > 0) && (
+              <div className={topBuyers.length > 0 ? '' : 'lg:col-span-3'}>
+                <Panel title={isDeposits ? 'Deposits by Weekday' : 'Orders by Weekday'}>
+                  <WeekdayChart days={weekdayBreakdown} currency={currency} />
+                </Panel>
+              </div>
             )}
           </div>
         )}
@@ -273,6 +275,44 @@ function TopProductsTable({ products, currency }) {
   );
 }
 
+function WeekdayChart({ days, currency }) {
+  // Display Mon → Sun (business-friendly order) instead of Sun → Sat
+  const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+  const maxCount = Math.max(1, ...days.map(d => d.count));
+
+  return (
+    <div className="flex items-end gap-2 h-44 pt-2">
+      {DISPLAY_ORDER.map((dow) => {
+        const d   = days[dow] ?? { count: 0, revenue: 0 };
+        const pct = (d.count / maxCount) * 100;
+        const isWeekend = dow === 0 || dow === 6;
+        return (
+          <div key={dow} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+            <span className="text-[10px] text-slate-400 tabular-nums">{d.count || ''}</span>
+            <div className="flex-1 w-full flex items-end">
+              <div
+                title={`${DOW_LABELS[dow]} — ${d.count} order${d.count !== 1 ? 's' : ''} · ${fmtMoneyPrecise(d.revenue, currency)}`}
+                className={[
+                  'w-full rounded-t transition-colors',
+                  isWeekend
+                    ? 'bg-gradient-to-t from-slate-600 to-slate-400'
+                    : 'bg-gradient-to-t from-blue-600 to-emerald-400',
+                ].join(' ')}
+                style={{ height: pct > 0 ? `${Math.max(pct, 2)}%` : '0' }}
+              />
+            </div>
+            <span className={['text-[11px] uppercase tracking-wider', isWeekend ? 'text-slate-500' : 'text-slate-300'].join(' ')}>
+              {DOW_LABELS[dow]}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// eslint-disable-next-line no-unused-vars
 function StatusBreakdown({ rows, total }) {
   return (
     <div className="flex flex-col gap-1.5">

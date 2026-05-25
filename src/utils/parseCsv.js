@@ -208,6 +208,7 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
   const byBuyer   = new Map();   // buyer → { gross, count }
   const byStatus  = new Map();   // status → count
   const byProduct = new Map();   // item name (or SKU) → { name, sku, listingId, quantity, revenue, orderCount }
+  const byWeekday = Array.from({ length: 7 }, () => ({ count: 0, revenue: 0 })); // 0=Sun … 6=Sat
   let minDate = null, maxDate = null;
   let currency = null;
 
@@ -267,6 +268,13 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
       m.refund += refund;
       m.count  += 1;
       byMonth.set(ym, m);
+
+      // Day-of-week tally — parse the YYYY-MM-DD parts manually so the
+      // weekday is independent of timezone.
+      const [dy, dm, dd] = date.split('-').map(Number);
+      const dow = new Date(dy, dm - 1, dd).getDay();
+      byWeekday[dow].count   += 1;
+      byWeekday[dow].revenue += gross;
 
       const buyerRaw = (iBuyer >= 0 ? row[iBuyer] : '') || (iBuyerNm >= 0 ? row[iBuyerNm] : '') || '—';
       const buyer = String(buyerRaw).trim() || '—';
@@ -328,12 +336,15 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
 
   totals.avgOrder = totals.orderCount > 0 ? totals.gross / totals.orderCount : 0;
 
+  const weekdayBreakdown = byWeekday.map((v, i) => ({ dow: i, count: v.count, revenue: v.revenue }));
+
   return {
     totals,
     months,
     topBuyers,
     topProducts,
     statusBreakdown,
+    weekdayBreakdown,
     dateRange: minDate && maxDate ? { min: minDate, max: maxDate } : null,
     currency: currency ?? 'USD',
   };
