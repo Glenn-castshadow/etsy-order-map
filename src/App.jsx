@@ -304,7 +304,7 @@ export default function App() {
         )}
 
         {/* Map / Globe */}
-        <div ref={mapRef} className="flex-1 relative">
+        <div ref={mapRef} className="flex-1 min-h-0 relative overflow-hidden">
 
           {baseMap === 'globe' ? (
             /* ── 3-D Globe ─────────────────────────────────────────────── */
