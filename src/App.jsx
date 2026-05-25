@@ -272,6 +272,10 @@ export default function App() {
   const ActiveStyle = styles.find(s => s.id === activeStyleId)?.component;
   const arcsActive  = activeStyleId === 'arcs';
   const needsOrigin = arcsActive && heatPoints.length > 0 && !originEntry;
+  // True whenever the chart dashboard is visible — either because we're in a
+  // chart-only kind (payments / deposits) or the user toggled Chart in orders
+  // mode.  Used to hide every map-specific sidebar control.
+  const isChartView = isPaymentsMode || viewMode === 'chart';
   const firstFile = csvFiles[0] ?? null; // drives the ColumnMapper UI
 
   return (
@@ -314,8 +318,8 @@ export default function App() {
           </div>
         </CollapsibleSection>
 
-        {/* ── Map weighting (orders mode only) ── */}
-        {!isPaymentsMode && firstFile?.headers && (
+        {/* ── Map weighting (orders mode + map view) ── */}
+        {!isChartView && firstFile?.headers && (
           <CollapsibleSection title="Map Weighting">
             <ColumnMapper
               headers={firstFile.headers}
@@ -348,8 +352,8 @@ export default function App() {
           </CollapsibleSection>
         )}
 
-        {/* ── Map-only controls (hidden in Payments mode) ── */}
-        {!isPaymentsMode && (
+        {/* ── Map-only controls (hidden in chart view of any kind) ── */}
+        {!isChartView && (
           <>
             <CollapsibleSection title="Base Map">
               <BaseMapToggle active={baseMap} onChange={setBaseMap} />
@@ -416,9 +420,11 @@ export default function App() {
           </>
         )}
 
-        <div className="mt-auto pt-2 text-xs text-slate-600">
-          {zipLookup.size.toLocaleString()} ZIP codes indexed
-        </div>
+        {!isChartView && (
+          <div className="mt-auto pt-2 text-xs text-slate-600">
+            {zipLookup.size.toLocaleString()} ZIP codes indexed
+          </div>
+        )}
       </aside>
 
       {/* ── Content area ── */}
