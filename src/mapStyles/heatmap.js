@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { heatGradients, defaultGradient } from './heatGradients.js';
 
 // ── Custom canvas heatmap layer ───────────────────────────────────────────────
 //
@@ -13,13 +14,19 @@ import L from 'leaflet';
 // time regardless of data sparsity or how the weights were normalised.
 
 class BlobHeatLayer extends L.Layer {
-  constructor(data = []) {
+  constructor(data = [], gradient = defaultGradient) {
     super();
-    this._data = data;
+    this._data     = data;
+    this._gradient = gradient;
   }
 
   setData(data) {
     this._data = data;
+    if (this._canvas) this._redraw();
+  }
+
+  setGradient(gradient) {
+    this._gradient = gradient;
     if (this._canvas) this._redraw();
   }
 
@@ -72,15 +79,16 @@ class BlobHeatLayer extends L.Layer {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    const grad = this._gradient;
+
     for (const { lat, lng, weight } of this._data) {
-      const pt  = map.latLngToContainerPoint(L.latLng(lat, lng));
-      const r   = Math.round(14 + weight * 22);   // blob radius 14–36 px
-      const hue = Math.round((1 - weight) * 240); // 240 (blue) → 0 (red)
+      const pt = map.latLngToContainerPoint(L.latLng(lat, lng));
+      const r  = Math.round(14 + weight * 22); // blob radius 14–36 px
 
       const g = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r);
-      g.addColorStop(0,    `hsla(${hue},90%,65%,${(0.72 + weight * 0.28).toFixed(2)})`);
-      g.addColorStop(0.45, `hsla(${hue},85%,55%,${(0.30 + weight * 0.20).toFixed(2)})`);
-      g.addColorStop(1,    `hsla(${hue},80%,45%,0)`);
+      g.addColorStop(0,    grad.center(weight));
+      g.addColorStop(0.45, grad.mid(weight));
+      g.addColorStop(1,    'hsla(0,0%,0%,0)');
 
       ctx.beginPath();
       ctx.fillStyle = g;
@@ -92,13 +100,15 @@ class BlobHeatLayer extends L.Layer {
 
 // ── React wrapper ─────────────────────────────────────────────────────────────
 
-function HeatmapLayer({ data }) {
+function HeatmapLayer({ data, gradientId }) {
   const map      = useMap();
   const layerRef = useRef(null);
 
+  const gradient = heatGradients.find(g => g.id === gradientId) ?? defaultGradient;
+
   // Create / destroy the canvas layer when the map instance changes
   useEffect(() => {
-    const layer = new BlobHeatLayer(data);
+    const layer = new BlobHeatLayer(data, gradient);
     layer.addTo(map);
     layerRef.current = layer;
     return () => {
@@ -112,6 +122,12 @@ function HeatmapLayer({ data }) {
   useEffect(() => {
     layerRef.current?.setData(data);
   }, [data]);
+
+  // Swap colour scheme without rebuilding the layer
+  useEffect(() => {
+    layerRef.current?.setGradient(gradient);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gradientId]);
 
   return null;
 }

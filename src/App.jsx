@@ -16,6 +16,7 @@ import StatCards from './components/StatCards.jsx';
 import TopStatesPanel from './components/TopStatesPanel.jsx';
 import ScaleSwitcher from './components/ScaleSwitcher.jsx';
 import BaseMapToggle from './components/BaseMapToggle.jsx';
+import HeatGradientPicker from './components/HeatGradientPicker.jsx';
 import GlobeView from './components/GlobeView.jsx';
 import { sniffCsv, aggregateRows, parseIsoDate } from './utils/parseCsv.js';
 import logoSmall from '../images/logo_small.png';
@@ -36,6 +37,7 @@ export default function App() {
   const [selectedRange, setSelectedRange] = useState({ from: '', to: '' });
   const [activeStyleId, setActiveStyleId] = useState(styles[0].id);
   const [scaleMode, setScaleMode]         = useState('linear');
+  const [heatGradientId, setHeatGradientId] = useState('spectrum');
   const [baseMap, setBaseMap]             = useState('flat');
   const [fileName, setFileName]           = useState(null);
   const [error, setError]                 = useState(null);
@@ -212,6 +214,13 @@ export default function App() {
           />
         )}
 
+        {baseMap === 'flat' && activeStyleId === 'heatmap' && heatPoints.length > 0 && (
+          <HeatGradientPicker
+            active={heatGradientId}
+            onChange={setHeatGradientId}
+          />
+        )}
+
         {arcsActive && (
           <OriginInput
             value={originZip}
@@ -266,7 +275,7 @@ export default function App() {
                 crossOrigin="anonymous"
               />
               {ActiveStyle && heatPoints.length > 0 && (
-                <ActiveStyle data={heatPoints} origin={originEntry} />
+                <ActiveStyle data={heatPoints} origin={originEntry} gradientId={heatGradientId} />
               )}
             </MapContainer>
           )}
