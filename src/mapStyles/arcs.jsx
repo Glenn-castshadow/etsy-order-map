@@ -1,4 +1,5 @@
-import { Polyline } from 'react-leaflet';
+import { Fragment } from 'react';
+import { Polyline, CircleMarker } from 'react-leaflet';
 
 const STEPS = 80; // points per arc
 
@@ -51,17 +52,33 @@ function ArcLayer({ data, origin, onZipClick }) {
     const hue   = Math.round((1 - weight) * 240);
     const color = `hsl(${hue}, 90%, 55%)`;
 
+    const clickHandlers = onZipClick && zip ? { click: () => onZipClick(zip) } : undefined;
+
     return (
-      <Polyline
-        key={`arc-${lat}-${lng}-${i}`}
-        positions={bezier(from, ctrl, to)}
-        eventHandlers={onZipClick && zip ? { click: () => onZipClick(zip) } : undefined}
-        pathOptions={{
-          color,
-          weight:  1 + weight * 3,
-          opacity: 0.35 + weight * 0.55,
-        }}
-      />
+      <Fragment key={`arc-${lat}-${lng}-${i}`}>
+        <Polyline
+          positions={bezier(from, ctrl, to)}
+          eventHandlers={clickHandlers}
+          pathOptions={{
+            color,
+            weight:  1 + weight * 3,
+            opacity: 0.35 + weight * 0.55,
+          }}
+        />
+        {/* Destination dot — small white pip with subtle dark border */}
+        <CircleMarker
+          center={to}
+          radius={2.5 + weight * 1.5}
+          eventHandlers={clickHandlers}
+          pathOptions={{
+            color:       'rgba(15,23,42,0.85)',
+            fillColor:   '#ffffff',
+            fillOpacity: 0.95,
+            weight:      1,
+            opacity:     0.85,
+          }}
+        />
+      </Fragment>
     );
   });
 }
