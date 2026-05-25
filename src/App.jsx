@@ -135,6 +135,12 @@ export default function App() {
     try {
       const sniff = await sniffCsv(file);
       if (!sniff.rows.length) throw new Error('No rows found in file.');
+      if (sniff.kind === 'etsy-payments') {
+        throw new Error(
+          'This is the Etsy "Direct Checkout Payments" export — it has no shipping ZIPs. ' +
+          'Use the "Sold Orders" CSV from Shop Manager → Settings → Options → Download Data instead.'
+        );
+      }
       const parsed = reAggregate(sniff, '', '');
       if (!parsed.length) throw new Error('No valid ZIP codes found in the detected column.');
       setRawCsv(sniff);

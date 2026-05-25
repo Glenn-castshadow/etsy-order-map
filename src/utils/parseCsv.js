@@ -88,6 +88,20 @@ function detectColumns(headers) {
   return { zipIdx, countIdx, dateIdx, confidence };
 }
 
+/**
+ * Heuristic: does this look like Etsy's "Direct Checkout Payments" export?
+ * That file has no shipping address — it's payment ledger data — so we want
+ * to point users at the Orders / Sold Orders export instead of failing
+ * silently with "no ZIPs found".
+ */
+function looksLikeEtsyPaymentsCsv(headers) {
+  if (!headers) return false;
+  const has = (name) => headers.some(h => h.toLowerCase() === name.toLowerCase());
+  return has('Payment ID')
+      && has('Posted Gross')
+      && !headers.some(h => ZIP_REGEX.test(h));
+}
+
 // ── Public API ─────────────────────────────────────────────────────────────
 
 /**
@@ -116,7 +130,9 @@ export function sniffCsv(file) {
           ({ zipIdx, countIdx, dateIdx, confidence } = detectColumns(headers));
         }
 
-        resolve({ headers, rows, zipIdx, countIdx, dateIdx, confidence });
+        const kind = looksLikeEtsyPaymentsCsv(headers) ? 'etsy-payments' : null;
+
+        resolve({ headers, rows, zipIdx, countIdx, dateIdx, confidence, kind });
       },
       error: reject,
     });
