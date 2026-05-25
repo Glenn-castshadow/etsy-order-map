@@ -43,6 +43,26 @@ export default function GlobeView({ data, origin }) {
 
   const rings = origin ? [{ lat: origin.lat, lng: origin.lng }] : [];
 
+  // Build arc objects from origin → each customer ZIP (when origin is set)
+  const arcs = origin
+    ? data
+        .filter(d =>
+          Math.abs(d.lat - origin.lat) > 0.05 ||
+          Math.abs(d.lng - origin.lng) > 0.05
+        )
+        .map(d => ({
+          startLat: origin.lat,
+          startLng: origin.lng,
+          endLat:   d.lat,
+          endLng:   d.lng,
+          weight:   d.weight,
+          color:    [
+            `hsla(${Math.round((1 - d.weight) * 240)},90%,70%,0.15)`,
+            `hsla(${Math.round((1 - d.weight) * 240)},90%,70%,0.90)`,
+          ],
+        }))
+    : [];
+
   return (
     <div
       ref={containerRef}
@@ -84,6 +104,19 @@ export default function GlobeView({ data, origin }) {
           ringRepeatPeriod={900}
           ringColor={() => 'rgba(255,210,70,0.75)'}
           ringAltitude={0.003}
+
+          // ── Shipping arcs — origin → each customer ZIP ───────────────────
+          arcsData={arcs}
+          arcStartLat="startLat"
+          arcStartLng="startLng"
+          arcEndLat="endLat"
+          arcEndLng="endLng"
+          arcColor="color"
+          arcAltitudeAutoScale={0.35}
+          arcStroke={d => 0.2 + d.weight * 0.7}
+          arcDashLength={0.45}
+          arcDashGap={0.2}
+          arcDashAnimateTime={2200}
         />
       )}
     </div>
