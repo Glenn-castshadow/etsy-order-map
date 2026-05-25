@@ -17,6 +17,7 @@ import TopStatesPanel from './components/TopStatesPanel.jsx';
 import ScaleSwitcher from './components/ScaleSwitcher.jsx';
 import BaseMapToggle from './components/BaseMapToggle.jsx';
 import HeatGradientPicker from './components/HeatGradientPicker.jsx';
+import GlobeLayerControls from './components/GlobeLayerControls.jsx';
 import GlobeView from './components/GlobeView.jsx';
 import { sniffCsv, aggregateRows, parseIsoDate } from './utils/parseCsv.js';
 import logoSmall from '../images/logo_small.png';
@@ -37,7 +38,10 @@ export default function App() {
   const [selectedRange, setSelectedRange] = useState({ from: '', to: '' });
   const [activeStyleId, setActiveStyleId] = useState(styles[0].id);
   const [scaleMode, setScaleMode]         = useState('linear');
-  const [heatGradientId, setHeatGradientId] = useState('spectrum');
+  const [heatGradientId, setHeatGradientId]   = useState('spectrum');
+  const [globeGradientId, setGlobeGradientId] = useState('spectrum');
+  const [globeShowSpikes, setGlobeShowSpikes] = useState(true);
+  const [globeShowArcs,   setGlobeShowArcs]   = useState(true);
   const [baseMap, setBaseMap]             = useState('flat');
   const [fileName, setFileName]           = useState(null);
   const [error, setError]                 = useState(null);
@@ -221,6 +225,15 @@ export default function App() {
           />
         )}
 
+        {baseMap === 'globe' && heatPoints.length > 0 && (
+          <GlobeLayerControls
+            showSpikes={globeShowSpikes} onSpikes={setGlobeShowSpikes}
+            showArcs={globeShowArcs}     onArcs={setGlobeShowArcs}
+            hasOrigin={!!originEntry}
+            gradientId={globeGradientId} onGradient={setGlobeGradientId}
+          />
+        )}
+
         {arcsActive && (
           <OriginInput
             value={originZip}
@@ -258,7 +271,13 @@ export default function App() {
 
           {baseMap === 'globe' ? (
             /* ── 3-D Globe ─────────────────────────────────────────────── */
-            <GlobeView data={heatPoints} origin={originEntry} />
+            <GlobeView
+              data={heatPoints}
+              origin={originEntry}
+              showSpikes={globeShowSpikes}
+              showArcs={globeShowArcs}
+              gradientId={globeGradientId}
+            />
           ) : (
             /* ── Flat map ──────────────────────────────────────────────── */
             <MapContainer

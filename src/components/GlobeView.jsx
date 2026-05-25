@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import Globe from 'react-globe.gl';
+import { heatGradients, defaultGradient } from '../mapStyles/heatGradients.js';
 
 const EARTH_TEX = '//unpkg.com/three-globe/example/img/earth-night.jpg';
 const SKY_TEX   = '//unpkg.com/three-globe/example/img/night-sky.png';
 
-export default function GlobeView({ data, origin }) {
+// Replace the alpha in an hsla() string — used to set arc fade colours
+function withAlpha(hslaStr, alpha) {
+  return hslaStr.replace(/,[\d.]+\)$/, `,${alpha})`);
+}
+
+export default function GlobeView({ data, origin, showSpikes = true, showArcs = true, gradientId = 'spectrum' }) {
   const globeRef     = useRef(null);
   const containerRef = useRef(null);
   const [dims, setDims] = useState({ w: 0, h: 0 });
+
+  const gradient = heatGradients.find(g => g.id === gradientId) ?? defaultGradient;
 
   // Track container size so the canvas fills the flex area
   useEffect(() => {
@@ -18,7 +26,6 @@ export default function GlobeView({ data, origin }) {
       setDims({ w: Math.round(width), h: Math.round(height) });
     });
     ro.observe(el);
-    // Seed with current size immediately
     setDims({ w: el.clientWidth, h: el.clientHeight });
     return () => ro.disconnect();
   }, []);
@@ -43,24 +50,24 @@ export default function GlobeView({ data, origin }) {
 
   const rings = origin ? [{ lat: origin.lat, lng: origin.lng }] : [];
 
-  // Build arc objects from origin → each customer ZIP (when origin is set)
-  const arcs = origin
+  // Arcs: origin → each customer ZIP (hidden when showArcs is off or no origin)
+  const arcs = (showArcs && origin)
     ? data
         .filter(d =>
           Math.abs(d.lat - origin.lat) > 0.05 ||
           Math.abs(d.lng - origin.lng) > 0.05
         )
-        .map(d => ({
-          startLat: origin.lat,
-          startLng: origin.lng,
-          endLat:   d.lat,
-          endLng:   d.lng,
-          weight:   d.weight,
-          color:    [
-            `hsla(${Math.round((1 - d.weight) * 240)},90%,70%,0.15)`,
-            `hsla(${Math.round((1 - d.weight) * 240)},90%,70%,0.90)`,
-          ],
-        }))
+        .map(d => {
+          const baseColor = gradient.center(d.weight);
+          return {
+            startLat: origin.lat,
+            startLng: origin.lng,
+            endLat:   d.lat,
+            endLng:   d.lng,
+            weight:   d.weight,
+            color:    [withAlpha(baseColor, 0.12), withAlpha(baseColor, 0.88)],
+          };
+        })
     : [];
 
   return (
@@ -82,16 +89,13 @@ export default function GlobeView({ data, origin }) {
           atmosphereColor="rgba(63,120,255,0.28)"
           atmosphereAltitude={0.14}
 
-          // ── Data points — colored spikes per ZIP ────────────────────────
-          pointsData={data}
+          // ── Data points — coloured spikes per ZIP ───────────────────────
+          pointsData={showSpikes ? data : []}
           pointLat="lat"
           pointLng="lng"
           pointAltitude={d => 0.005 + d.weight * 0.09}
           pointRadius={d => 0.18 + d.weight * 0.52}
-          pointColor={d => {
-            const hue = Math.round((1 - d.weight) * 240);
-            return `hsla(${hue}, 90%, 65%, 0.92)`;
-          }}
+          pointColor={d => gradient.center(d.weight)}
           pointsMerge={false}
           pointResolution={6}
 
