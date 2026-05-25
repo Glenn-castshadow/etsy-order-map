@@ -1,6 +1,6 @@
 [package]
 name = "etsy-order-map"
-version = "0.3.52"
+version = "0.3.53"
 description = "Map Etsy customer orders to a ZIP code heatmap"
 authors = ["Glenn-castshadow"]
 license = "MIT"
