@@ -4,6 +4,7 @@
   "version": "0.3.0",
   "type": "module",
   "scripts": {
+    "prepare": "node scripts/install-hooks.js",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
