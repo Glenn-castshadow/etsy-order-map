@@ -1,4 +1,4 @@
-# Etsy Order Map v0.3.46
+# Etsy Order Map v0.3.47
 
 A desktop app that maps Etsy customer orders onto a US ZIP code heatmap. Drop in your Etsy order CSV export — column names are auto-detected — and instantly see where your customers are concentrated.
 
