@@ -65,7 +65,9 @@ export default function App() {
     return zipLookup.get(originZip.padStart(5, '0')) ?? null;
   }, [originZip]);
 
-  const isPaymentsMode = csvFiles[0]?.kind === 'etsy-payments';
+  // Chart-only kinds (no ZIP data so no map view possible).
+  const poolKind = csvFiles[0]?.kind ?? null;
+  const isPaymentsMode = poolKind === 'etsy-payments' || poolKind === 'etsy-deposits';
 
   const dateRange = useMemo(() => {
     if (!csvFiles.length) return null;
@@ -202,13 +204,14 @@ export default function App() {
       const sniff = await sniffCsv(file);
       if (!sniff.rows.length) throw new Error('No rows found in file.');
 
-      // For order CSVs, sanity-check that ZIPs actually resolve.
-      if (sniff.kind !== 'etsy-payments') {
+      // Chart-only kinds (Payments, Deposits) skip the ZIP sanity-check.
+      const chartOnly = sniff.kind === 'etsy-payments' || sniff.kind === 'etsy-deposits';
+      if (!chartOnly) {
         const test = aggregateRows(sniff.rows, sniff.zipIdx, sniff.countIdx);
         if (!test.length) throw new Error('No valid ZIP codes found in the detected column.');
       }
 
-      const newKind = sniff.kind === 'etsy-payments' ? 'etsy-payments' : 'orders';
+      const newKind = sniff.kind ?? 'orders';
       const entry = {
         id:   `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         name: file.name,
@@ -302,7 +305,10 @@ export default function App() {
             )}
             {csvFiles.length > 1 && isPaymentsMode && payments && (
               <p className="text-xs text-slate-500">
-                Combined: {payments.totals.orderCount.toLocaleString()} payment{payments.totals.orderCount !== 1 ? 's' : ''}
+                Combined: {payments.totals.orderCount.toLocaleString()}{' '}
+                {poolKind === 'etsy-deposits'
+                  ? `deposit${payments.totals.orderCount !== 1 ? 's' : ''}`
+                  : `payment${payments.totals.orderCount !== 1 ? 's' : ''}`}
               </p>
             )}
           </div>
@@ -322,10 +328,10 @@ export default function App() {
           </CollapsibleSection>
         )}
 
-        {/* ── Payments badge (Etsy Payments CSV detected) ── */}
+        {/* ── Chart-only kind badge ── */}
         {isPaymentsMode && (
           <div className="self-start text-xs font-medium text-emerald-400 bg-emerald-950/50 px-1.5 py-0.5 rounded">
-            Etsy Payments ✓
+            {poolKind === 'etsy-deposits' ? 'Etsy Deposits ✓' : 'Etsy Payments ✓'}
           </div>
         )}
 
@@ -427,7 +433,7 @@ export default function App() {
               active={viewMode === 'map' && !isPaymentsMode}
               disabled={isPaymentsMode}
               onClick={() => setViewMode('map')}
-              title={isPaymentsMode ? 'Payments CSVs have no ZIP data' : undefined}
+              title={isPaymentsMode ? `${poolKind === 'etsy-deposits' ? 'Deposit' : 'Payments'} CSVs have no ZIP data` : undefined}
             />
             <ViewToggleBtn
               label="📊 Chart"
@@ -439,7 +445,7 @@ export default function App() {
 
         {/* ── Chart view (or payments-only when no ZIP data) ───────────── */}
         {(viewMode === 'chart' || isPaymentsMode) && payments && (
-          <PaymentsView payments={payments} />
+          <PaymentsView payments={payments} kind={poolKind ?? 'orders'} />
         )}
 
         {/* ── Map view ─────────────────────────────────────────────────── */}

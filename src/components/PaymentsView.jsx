@@ -26,51 +26,77 @@ const fmtMonth = (ym) => {
   return `${MONTH_LABELS[+m - 1]} ${y.slice(2)}`;
 };
 
-export default function PaymentsView({ payments }) {
+export default function PaymentsView({ payments, kind = 'orders' }) {
   const { totals, months, topBuyers, topProducts = [], statusBreakdown, currency } = payments;
-  const feeRate = totals.gross > 0 ? (totals.fees / totals.gross) * 100 : 0;
+  const isDeposits = kind === 'etsy-deposits';
+  const feeRate    = totals.gross > 0 ? (totals.fees   / totals.gross) * 100 : 0;
   const refundRate = totals.gross > 0 ? (totals.refund / totals.gross) * 100 : 0;
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-slate-950">
       <div className="max-w-6xl mx-auto p-6 flex flex-col gap-6">
 
-        {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <Kpi label="Gross Revenue"  value={fmtMoney(totals.gross, currency)}  accent="text-emerald-400" />
-          <Kpi label="Net Revenue"    value={fmtMoney(totals.net, currency)}    accent="text-blue-400" />
-          <Kpi label="Total Fees"     value={fmtMoney(totals.fees, currency)}   accent="text-amber-400"
-               sub={`${feeRate.toFixed(1)}% of gross`} />
-          <Kpi label="Orders"         value={totals.orderCount.toLocaleString()} accent="text-violet-400" />
-          <Kpi label="Avg Order"      value={fmtMoneyPrecise(totals.avgOrder, currency)} accent="text-cyan-400" />
-          <Kpi label="Refunds"        value={fmtMoney(totals.refund, currency)} accent="text-rose-400"
-               sub={refundRate > 0 ? `${refundRate.toFixed(1)}% of gross` : 'none'} />
+        {/* KPIs — Deposits hides Fees/Refunds since the export doesn't carry them */}
+        <div className={`grid gap-3 ${isDeposits ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6'}`}>
+          <Kpi
+            label={isDeposits ? 'Total Deposited' : 'Gross Revenue'}
+            value={fmtMoney(totals.gross, currency)}
+            accent="text-emerald-400"
+          />
+          {!isDeposits && (
+            <Kpi label="Net Revenue"    value={fmtMoney(totals.net, currency)}    accent="text-blue-400" />
+          )}
+          {!isDeposits && (
+            <Kpi label="Total Fees"     value={fmtMoney(totals.fees, currency)}   accent="text-amber-400"
+                 sub={`${feeRate.toFixed(1)}% of gross`} />
+          )}
+          <Kpi
+            label={isDeposits ? 'Deposits' : 'Orders'}
+            value={totals.orderCount.toLocaleString()}
+            accent="text-violet-400"
+          />
+          <Kpi
+            label={isDeposits ? 'Avg Deposit' : 'Avg Order'}
+            value={fmtMoneyPrecise(totals.avgOrder, currency)}
+            accent="text-cyan-400"
+          />
+          {!isDeposits && (
+            <Kpi label="Refunds"        value={fmtMoney(totals.refund, currency)} accent="text-rose-400"
+                 sub={refundRate > 0 ? `${refundRate.toFixed(1)}% of gross` : 'none'} />
+          )}
+          {isDeposits && months.length > 0 && (
+            <Kpi
+              label="Months Covered"
+              value={months.length.toLocaleString()}
+              accent="text-fuchsia-400"
+            />
+          )}
         </div>
 
-        {/* Monthly revenue chart */}
-        <Panel title="Monthly Revenue">
+        {/* Monthly chart */}
+        <Panel title={isDeposits ? 'Monthly Deposits' : 'Monthly Revenue'}>
           {months.length > 0
             ? <MonthlyChart months={months} currency={currency} />
             : <Empty>No dated rows in range.</Empty>}
         </Panel>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Top buyers */}
-          <div className="lg:col-span-2">
-            <Panel title="Top Buyers">
-              {topBuyers.length > 0
-                ? <TopBuyersTable buyers={topBuyers} currency={currency} />
-                : <Empty>No rows.</Empty>}
-            </Panel>
+        {/* Top buyers + status row — only show buyers panel when populated */}
+        {(topBuyers.length > 0 || statusBreakdown.length > 0) && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {topBuyers.length > 0 && (
+              <div className="lg:col-span-2">
+                <Panel title="Top Buyers">
+                  <TopBuyersTable buyers={topBuyers} currency={currency} />
+                </Panel>
+              </div>
+            )}
+            {statusBreakdown.length > 0 && (
+              <Panel title="Status">
+                <StatusBreakdown rows={statusBreakdown} total={totals.orderCount} />
+              </Panel>
+            )}
           </div>
-
-          {/* Status breakdown */}
-          <Panel title="Status">
-            {statusBreakdown.length > 0
-              ? <StatusBreakdown rows={statusBreakdown} total={totals.orderCount} />
-              : <Empty>No rows.</Empty>}
-          </Panel>
-        </div>
+        )}
 
         {/* Top products — only shown when the CSV had Item Name or SKU info */}
         {topProducts.length > 0 && (

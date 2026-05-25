@@ -54,10 +54,11 @@ export function parseIsoDate(str) {
     return `${year}-${mdy[1].padStart(2, '0')}-${mdy[2].padStart(2, '0')}`;
   }
 
-  // MMM-DD-YYYY  or  MMM DD, YYYY  (e.g. Jan-15-2024, Jan 15, 2024)
-  const named = str.match(/^([A-Za-z]{3})[-\s](\d{1,2})[,\s-]+(\d{4})$/);
+  // MMM-DD-YYYY  /  MMM DD, YYYY  /  Month DD, YYYY
+  // (Jan-15-2024, Jan 15, 2024, January 2, 2026)
+  const named = str.match(/^([A-Za-z]{3,})[-\s](\d{1,2})[,\s-]+(\d{4})$/);
   if (named) {
-    const m = MONTH_MAP[named[1].toLowerCase()];
+    const m = MONTH_MAP[named[1].slice(0, 3).toLowerCase()];
     if (m) return `${named[3]}-${String(m).padStart(2, '0')}-${named[2].padStart(2, '0')}`;
   }
 
@@ -108,6 +109,17 @@ function looksLikeEtsyPaymentsCsv(headers) {
       && !headers.some(h => ZIP_REGEX.test(h));
 }
 
+/**
+ * Heuristic: does this look like Etsy's "Deposits" export?
+ * Distinctive header: "Bank Account Ending Digits" — no other Etsy CSV
+ * uses that.  Columns are just Date / Amount / Currency / Status, so this
+ * routes to a financial dashboard view (no map possible).
+ */
+function looksLikeEtsyDepositsCsv(headers) {
+  if (!headers) return false;
+  return headers.some(h => /bank account ending/i.test(h));
+}
+
 // ── Public API ─────────────────────────────────────────────────────────────
 
 /**
@@ -136,7 +148,9 @@ export function sniffCsv(file) {
           ({ zipIdx, countIdx, dateIdx, confidence } = detectColumns(headers));
         }
 
-        const kind = looksLikeEtsyPaymentsCsv(headers) ? 'etsy-payments' : null;
+        let kind = null;
+        if      (looksLikeEtsyPaymentsCsv(headers)) kind = 'etsy-payments';
+        else if (looksLikeEtsyDepositsCsv(headers)) kind = 'etsy-deposits';
 
         resolve({ headers, rows, zipIdx, countIdx, dateIdx, confidence, kind });
       },
@@ -209,7 +223,7 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
       }
       return -1;
     };
-    const iGross   = idxAny('Gross Amount', 'Order Total', 'Item Total', 'Order Value');
+    const iGross   = idxAny('Gross Amount', 'Order Total', 'Item Total', 'Order Value', 'Amount');
     const iFees    = idxAny('Fees', 'Card Processing Fees');
     const iNet     = idxAny('Net Amount', 'Order Net', 'Adjusted Net Order Amount');
     const iRefund  = idxAny('Refund Amount');
