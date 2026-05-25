@@ -35,7 +35,7 @@ export default function TopStatesPanel({ topStates, total, topZip, stateCount })
   const insights = buildInsights(topStates, total, topZip, stateCount);
 
   return (
-    <div className="absolute bottom-6 right-4 w-52 bg-slate-900/90 backdrop-blur rounded-xl border border-slate-700 shadow-xl text-sm z-[1100]">
+    <div className="absolute bottom-6 right-4 w-52 max-h-[calc(100%-3rem)] overflow-y-auto bg-slate-900/90 backdrop-blur rounded-xl border border-slate-700 shadow-xl text-sm z-[1100]">
       <div className="px-3 pt-3 pb-1.5">
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Top States</p>
       </div>

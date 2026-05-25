@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Globe from 'react-globe.gl';
 import { heatGradients, defaultGradient } from '../mapStyles/heatGradients.js';
 
@@ -10,114 +10,160 @@ function withAlpha(hslaStr, alpha) {
   return hslaStr.replace(/,[\d.]+\)$/, `,${alpha})`);
 }
 
-// Three.js MOUSE action constants:  ROTATE=0, DOLLY=1, PAN=2
-const M_ROTATE = 0;
-const M_DOLLY  = 1;
-const M_PAN    = 2;
-
-export default function GlobeView({ data, origin, showSpikes = true, showArcs = true, arcsAnimated = true, gradientId = 'spectrum' }) {
+export default function GlobeView({ data, origin, showSpikes = true, showArcs = true, showOrigin = true, arcsAnimated = true, gradientId = 'spectrum' }) {
   const globeRef     = useRef(null);
   const containerRef = useRef(null);
+  const initRef      = useRef(false);          // guard: configure controls only ONCE
   const [dims, setDims] = useState({ w: 0, h: 0 });
-  const [isReady, setIsReady] = useState(false);
 
   const gradient = heatGradients.find(g => g.id === gradientId) ?? defaultGradient;
 
-  // Track container size so the canvas fills the flex area
+  // Track container size so the canvas fills the flex area.
+  // CRITICAL: we IGNORE zero-size events — otherwise layout reflows would push
+  // dims to {0,0}, which (via the `dims.w > 0` gate below) unmounted the entire
+  // <Globe>.  Every remount created a fresh Three.js scene and re-fired
+  // onGlobeReady, which flew the camera back to USA — that was the "constantly
+  // recentered" behaviour.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
-      setDims({ w: Math.round(width), h: Math.round(height) });
+      const w = Math.round(width);
+      const h = Math.round(height);
+      if (w === 0 || h === 0) return; // don't propagate transient zeros
+      setDims(prev => (prev.w === w && prev.h === h ? prev : { w, h }));
     });
     ro.observe(el);
-    setDims({ w: el.clientWidth, h: el.clientHeight });
+    const w0 = el.clientWidth, h0 = el.clientHeight;
+    if (w0 > 0 && h0 > 0) setDims({ w: w0, h: h0 });
     return () => ro.disconnect();
   }, []);
 
-  // On globe ready — fly to USA and signal the controls-config effect below
+  // Fires once when the globe texture has loaded.  Guarded against repeat
+  // firings (which would re-fly the camera back to centre — the "recentering"
+  // the user was seeing).
   function handleGlobeReady() {
+    if (initRef.current) return;
+    initRef.current = true;
+
     const g = globeRef.current;
     if (!g) return;
-    g.pointOfView({ lat: 38, lng: -96, altitude: 2.1 }, 900);
-    setIsReady(true);
-  }
 
-  // Controls configuration — re-applied at several intervals after ready
-  // because three-globe sometimes resets mouseButtons after onGlobeReady
-  // fires.  Properties on existing objects are MUTATED, not replaced.
-  useEffect(() => {
-    if (!isReady) return;
+    // One-time fly to USA
+    g.pointOfView({ lat: 38, lng: -96, altitude: 2.1 }, 1200);
 
-    const apply = () => {
-      const ctrl = globeRef.current?.controls();
-      if (!ctrl) return;
+    // Configure the OrbitControls (controlType="orbit" set on <Globe> below)
+    const ctrl = g.controls();
+    if (!ctrl) return;
 
-      ctrl.autoRotateSpeed    = 0.35;
-      ctrl.enableDamping      = true;
-      ctrl.dampingFactor      = 0.25;
-      ctrl.rotateSpeed        = 0.6;
-      ctrl.enablePan          = true;
-      ctrl.panSpeed           = 1.2;
-      ctrl.screenSpacePanning = true;
+    // CRITICAL: damping off.  With damping, OrbitControls applies a decaying
+    // velocity each frame — this was the source of the "constantly recentered"
+    // behaviour because pan deltas got smoothed back toward equilibrium.
+    ctrl.enableDamping = false;
 
-      if (ctrl.mouseButtons) {
-        ctrl.mouseButtons.LEFT   = M_ROTATE;
-        ctrl.mouseButtons.MIDDLE = M_DOLLY;
-        ctrl.mouseButtons.RIGHT  = M_PAN;
-      }
-      if (ctrl.touches) {
-        ctrl.touches.ONE = M_ROTATE;
-        ctrl.touches.TWO = M_PAN;
+    // No auto-rotate — was also fighting manual positioning
+    ctrl.autoRotate = false;
+
+    ctrl.rotateSpeed        = 0.5;
+    ctrl.zoomSpeed          = 0.7;
+    ctrl.enablePan          = true;
+    ctrl.panSpeed           = 1.5;
+    ctrl.screenSpacePanning = true;
+
+    // Explicit mouse buttons (OrbitControls defaults are already these, but
+    // be defensive in case three-globe touched them)
+    if (ctrl.mouseButtons) {
+      ctrl.mouseButtons.LEFT   = 0; // ROTATE
+      ctrl.mouseButtons.MIDDLE = 1; // DOLLY
+      ctrl.mouseButtons.RIGHT  = 2; // PAN
+    }
+    if (ctrl.touches) {
+      ctrl.touches.ONE = 0; // ROTATE
+      ctrl.touches.TWO = 2; // PAN
+    }
+
+    // ── PAN FIX ───────────────────────────────────────────────────────────
+    // three-globe registers an internal 'change' listener on the controls
+    // that calls `controls.target.setScalar(0)` on every change event,
+    // forcibly re-centering the target at the origin.  That is what makes
+    // right-click pan feel like it "doesn't work" / "snaps back" — pan moves
+    // the target, then three-globe immediately slams it back to (0,0,0).
+    //
+    // We neuter that one line by stubbing `target.setScalar` on this Vector3
+    // instance.  The rest of three-globe's change listener (altitude-based
+    // rotate/zoom speed, layer pointOfView updates, onZoom callback) is
+    // untouched — only the target reset is disabled, allowing real pan.
+    //
+    // We also raise maxTargetRadius (default null → causes clampLength to
+    // collapse the target to zero length) so the target can move freely.
+    ctrl.maxTargetRadius = Infinity;
+
+    // Apply the setScalar stub after pointOfView's 1200ms fly-to animation
+    // completes — during the animation three-globe may swap or reset target,
+    // wiping any patch we install synchronously.
+    const installPanFix = () => {
+      // Find and remove three-globe's change listener that resets target
+      const changeListeners = ctrl._listeners && ctrl._listeners.change;
+      if (changeListeners) {
+        const offenderIdx = changeListeners.findIndex(fn =>
+          fn.toString().includes('target.setScalar(0)')
+        );
+        if (offenderIdx >= 0) {
+          const offender = changeListeners[offenderIdx];
+          // Wrap it: run the original body but suppress target.setScalar(0)
+          changeListeners[offenderIdx] = function wrapped() {
+            const orig = ctrl.target.setScalar;
+            ctrl.target.setScalar = function () { /* swallow */ };
+            try { offender.call(this); } finally { ctrl.target.setScalar = orig; }
+          };
+        }
       }
     };
-
-    // Initial auto-rotate (one-time)
-    const ctrl0 = globeRef.current?.controls();
-    if (ctrl0) ctrl0.autoRotate = true;
-
-    apply();
-    const t1 = setTimeout(apply, 50);
-    const t2 = setTimeout(apply, 250);
-    const t3 = setTimeout(apply, 800);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [isReady]);
-
-
-  // Stop auto-rotate the moment the user grabs the globe
-  function handlePointerDown() {
-    const ctrl = globeRef.current?.controls();
-    if (ctrl) ctrl.autoRotate = false;
+    setTimeout(installPanFix, 1500);
   }
 
-  const rings = origin ? [{ lat: origin.lat, lng: origin.lng }] : [];
+  const rings = useMemo(
+    () => (showOrigin && origin ? [{ lat: origin.lat, lng: origin.lng }] : []),
+    [showOrigin, origin?.lat, origin?.lng],
+  );
 
-  // Arcs: origin → each customer ZIP (hidden when showArcs is off or no origin)
-  const arcs = (showArcs && origin)
-    ? data
-        .filter(d =>
-          Math.abs(d.lat - origin.lat) > 0.05 ||
-          Math.abs(d.lng - origin.lng) > 0.05
-        )
-        .map(d => {
-          const baseColor = gradient.center(d.weight);
-          return {
-            startLat: origin.lat,
-            startLng: origin.lng,
-            endLat:   d.lat,
-            endLng:   d.lng,
-            weight:   d.weight,
-            color:    [withAlpha(baseColor, 0.12), withAlpha(baseColor, 0.88)],
-          };
-        })
-    : [];
+  // Ring color: pull from the active gradient's hot end so the pulsing
+  // halo matches the heat scheme.  Returning a function gives a t-parameter
+  // (0..1) propagation fade so the ring smoothly disappears at its edge.
+  const ringHotColor = gradient.center(0.95);
+  const ringColorFn = useMemo(
+    () => () => (t) => withAlpha(ringHotColor, (1 - t) * 0.85),
+    [ringHotColor],
+  );
+
+  // Arcs: origin → each customer ZIP (hidden when showArcs is off or no origin).
+  // Memoized so we don't hand react-globe.gl a brand-new array on every render,
+  // which would force it to rebuild arc meshes (potential camera-state side effects).
+  const arcs = useMemo(() => {
+    if (!showArcs || !origin) return [];
+    return data
+      .filter(d =>
+        Math.abs(d.lat - origin.lat) > 0.05 ||
+        Math.abs(d.lng - origin.lng) > 0.05
+      )
+      .map(d => {
+        const baseColor = gradient.center(d.weight);
+        return {
+          startLat: origin.lat,
+          startLng: origin.lng,
+          endLat:   d.lat,
+          endLng:   d.lng,
+          weight:   d.weight,
+          color:    [withAlpha(baseColor, 0.12), withAlpha(baseColor, 0.88)],
+        };
+      });
+  }, [data, origin?.lat, origin?.lng, showArcs, gradient]);
 
   return (
     <div
       ref={containerRef}
       className="w-full h-full bg-slate-950"
-      onPointerDown={handlePointerDown}
       onContextMenu={e => e.preventDefault()}
     >
       {dims.w > 0 && dims.h > 0 && (
@@ -151,7 +197,7 @@ export default function GlobeView({ data, origin, showSpikes = true, showArcs = 
           ringMaxRadius={4.5}
           ringPropagationSpeed={2.5}
           ringRepeatPeriod={900}
-          ringColor={() => 'rgba(255,210,70,0.75)'}
+          ringColor={ringColorFn}
           ringAltitude={0.003}
 
           // ── Shipping arcs — origin → each customer ZIP ───────────────────

@@ -3,6 +3,7 @@ import { heatGradients } from '../mapStyles/heatGradients.js';
 export default function GlobeLayerControls({
   showSpikes,   onSpikes,
   showArcs,     onArcs,
+  showOrigin,   onOrigin,
   arcsAnimated, onArcsAnimated,
   hasOrigin,
   gradientId,   onGradient,
@@ -19,6 +20,13 @@ export default function GlobeLayerControls({
             onClick={() => onArcs(!showArcs)}
             disabled={!hasOrigin}
             title={!hasOrigin ? 'Enter a shop ZIP to enable arcs' : undefined}
+          />
+          <Toggle
+            label="Origin"
+            active={showOrigin}
+            onClick={() => onOrigin(!showOrigin)}
+            disabled={!hasOrigin}
+            title={!hasOrigin ? 'Enter a shop ZIP to enable origin ring' : undefined}
           />
         </div>
         {showArcs && hasOrigin && (

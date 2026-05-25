@@ -43,6 +43,7 @@ export default function App() {
   const [globeGradientId,   setGlobeGradientId]   = useState('spectrum');
   const [globeShowSpikes,   setGlobeShowSpikes]   = useState(true);
   const [globeShowArcs,     setGlobeShowArcs]     = useState(true);
+  const [globeShowOrigin,   setGlobeShowOrigin]   = useState(true);
   const [globeArcsAnimated, setGlobeArcsAnimated] = useState(true);
   const [baseMap, setBaseMap]             = useState('flat');
   const [fileName, setFileName]           = useState(null);
@@ -250,6 +251,7 @@ export default function App() {
             <GlobeLayerControls
               showSpikes={globeShowSpikes}     onSpikes={setGlobeShowSpikes}
               showArcs={globeShowArcs}         onArcs={setGlobeShowArcs}
+              showOrigin={globeShowOrigin}     onOrigin={setGlobeShowOrigin}
               arcsAnimated={globeArcsAnimated} onArcsAnimated={setGlobeArcsAnimated}
               hasOrigin={!!originEntry}
               gradientId={globeGradientId}     onGradient={setGlobeGradientId}
@@ -311,6 +313,7 @@ export default function App() {
               origin={originEntry}
               showSpikes={globeShowSpikes}
               showArcs={globeShowArcs}
+              showOrigin={globeShowOrigin}
               arcsAnimated={globeArcsAnimated}
               gradientId={globeGradientId}
             />
