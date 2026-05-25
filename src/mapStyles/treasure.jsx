@@ -4,7 +4,7 @@ import { useLodData } from '../utils/useLodData.js';
 
 const MIN_COINS = 5;
 const MAX_COINS = 18;
-const COIN_PX   = 8;   // ~50% of prior 9-22px range
+const COIN_PX   = 10.4; // 8px × 1.30
 
 function frac(x) { return x - Math.floor(x); }
 
