@@ -154,7 +154,12 @@ export function sniffCsv(file) {
 
         resolve({ headers, rows, zipIdx, countIdx, dateIdx, confidence, kind });
       },
-      error: reject,
+      error: (err) => {
+        console.error('[ZipMap] PapaParse error', {
+          file: file.name, size: file.size, type: file.type, error: err,
+        });
+        reject(err instanceof Error ? err : new Error(String(err?.message ?? err)));
+      },
     });
   });
 }

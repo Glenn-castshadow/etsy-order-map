@@ -276,38 +276,64 @@ function TopProductsTable({ products, currency }) {
 }
 
 function WeekdayChart({ days, currency }) {
-  // Display Mon → Sun (business-friendly order) instead of Sun → Sat
   const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
-  const maxCount = Math.max(1, ...days.map(d => d.count));
+  const COLORS = ['#60a5fa', '#34d399', '#a78bfa', '#fbbf24', '#f472b6', '#94a3b8', '#64748b'];
+
+  const total = days.reduce((s, d) => s + (d?.count ?? 0), 0);
+  if (total === 0) return <Empty>No orders in range.</Empty>;
+
+  const slices = DISPLAY_ORDER.map((dow, di) => {
+    const d = days[dow] ?? { count: 0, revenue: 0 };
+    return { dow, label: DOW_LABELS[dow], count: d.count, revenue: d.revenue,
+             pct: d.count / total, color: COLORS[di], isWeekend: dow === 0 || dow === 6 };
+  });
+
+  // Build SVG donut paths
+  const cx = 90, cy = 90, outerR = 78, innerR = 42;
+  let angle = -Math.PI / 2;
+  const arcs = slices.map(s => {
+    const start = angle;
+    const sweep = s.pct * 2 * Math.PI;
+    angle += sweep;
+    if (sweep < 0.001) return { ...s, path: null };
+    const large = sweep > Math.PI ? 1 : 0;
+    const cos = (a) => Math.cos(a), sin = (a) => Math.sin(a);
+    const path = [
+      `M ${cx + outerR * cos(start)} ${cy + outerR * sin(start)}`,
+      `A ${outerR} ${outerR} 0 ${large} 1 ${cx + outerR * cos(angle)} ${cy + outerR * sin(angle)}`,
+      `L ${cx + innerR * cos(angle)} ${cy + innerR * sin(angle)}`,
+      `A ${innerR} ${innerR} 0 ${large} 0 ${cx + innerR * cos(start)} ${cy + innerR * sin(start)}`,
+      'Z',
+    ].join(' ');
+    return { ...s, path };
+  });
 
   return (
-    <div className="flex items-end gap-2 h-44 pt-2">
-      {DISPLAY_ORDER.map((dow) => {
-        const d   = days[dow] ?? { count: 0, revenue: 0 };
-        const pct = (d.count / maxCount) * 100;
-        const isWeekend = dow === 0 || dow === 6;
-        return (
-          <div key={dow} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-            <span className="text-[10px] text-slate-400 tabular-nums">{d.count || ''}</span>
-            <div className="flex-1 w-full flex items-end">
-              <div
-                title={`${DOW_LABELS[dow]} — ${d.count} order${d.count !== 1 ? 's' : ''} · ${fmtMoneyPrecise(d.revenue, currency)}`}
-                className={[
-                  'w-full rounded-t transition-colors',
-                  isWeekend
-                    ? 'bg-gradient-to-t from-slate-600 to-slate-400'
-                    : 'bg-gradient-to-t from-blue-600 to-emerald-400',
-                ].join(' ')}
-                style={{ height: pct > 0 ? `${Math.max(pct, 2)}%` : '0' }}
-              />
+    <div className="flex flex-col sm:flex-row items-center gap-4">
+      <svg viewBox="0 0 180 180" className="w-40 h-40 shrink-0">
+        {arcs.map(a => a.path && (
+          <path key={a.dow} d={a.path} fill={a.color} opacity={a.isWeekend ? 0.55 : 0.9}>
+            <title>{`${a.label} — ${a.count} order${a.count !== 1 ? 's' : ''} (${(a.pct * 100).toFixed(1)}%)\n${fmtMoneyPrecise(a.revenue, currency)}`}</title>
+          </path>
+        ))}
+        <text x={cx} y={cy - 5} textAnchor="middle" fill="#e2e8f0" style={{ fontSize: 20, fontWeight: 700 }}>{total}</text>
+        <text x={cx} y={cy + 11} textAnchor="middle" fill="#64748b" style={{ fontSize: 9, letterSpacing: 1 }}>ORDERS</text>
+      </svg>
+
+      <div className="flex flex-col gap-1.5 w-full">
+        {arcs.map(a => a.count > 0 && (
+          <div key={a.dow} className="flex items-center gap-2 text-xs">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: a.color, opacity: a.isWeekend ? 0.55 : 0.9 }} />
+            <span className={a.isWeekend ? 'text-slate-500 w-7' : 'text-slate-300 w-7'}>{a.label}</span>
+            <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${a.pct * 100}%`, background: a.color, opacity: a.isWeekend ? 0.55 : 0.9 }} />
             </div>
-            <span className={['text-[11px] uppercase tracking-wider', isWeekend ? 'text-slate-500' : 'text-slate-300'].join(' ')}>
-              {DOW_LABELS[dow]}
-            </span>
+            <span className="text-slate-400 tabular-nums w-8 text-right">{a.count}</span>
+            <span className="text-slate-600 tabular-nums w-9 text-right">{(a.pct * 100).toFixed(0)}%</span>
           </div>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }

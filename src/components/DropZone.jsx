@@ -34,9 +34,7 @@ export default function DropZone({ onFile, hasFiles = false, error }) {
   function handleDrop(e) {
     e.preventDefault();
     setDragging(false);
-    for (const file of e.dataTransfer.files) {
-      onFile(file);
-    }
+    onFile(Array.from(e.dataTransfer.files));
   }
 
   return (
@@ -77,7 +75,7 @@ export default function DropZone({ onFile, hasFiles = false, error }) {
           multiple
           className="hidden"
           onChange={e => {
-            for (const f of e.target.files) onFile(f);
+            onFile(Array.from(e.target.files));
             e.target.value = ''; // reset so the same file can be re-selected
           }}
         />

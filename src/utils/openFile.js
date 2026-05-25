@@ -12,15 +12,34 @@ export async function openNativeCsv() {
   const { open } = await import('@tauri-apps/plugin-dialog');
   const { invoke } = await import('@tauri-apps/api/core');
 
-  const path = await open({
-    title: 'Open CSV',
-    filters: [{ name: 'CSV files', extensions: ['csv', 'txt'] }],
-    multiple: false,
-  });
+  let path;
+  try {
+    path = await open({
+      title: 'Open CSV',
+      filters: [{ name: 'CSV files', extensions: ['csv', 'txt'] }],
+      multiple: false,
+    });
+  } catch (e) {
+    console.error('[ZipMap] file dialog failed', e);
+    throw new Error(`File dialog error: ${e?.message ?? e}`);
+  }
 
   if (!path || typeof path !== 'string') return null;
 
-  const content = await invoke('read_file', { path });
+  let content;
+  try {
+    content = await invoke('read_file', { path });
+  } catch (e) {
+    console.error('[ZipMap] read_file invoke failed', { path, error: e });
+    throw new Error(`Could not read file: ${e?.message ?? e}`);
+  }
+
+  if (typeof content !== 'string') {
+    const msg = `read_file returned ${typeof content} (${content?.constructor?.name}) instead of string`;
+    console.error('[ZipMap] read_file type mismatch', { path, type: typeof content });
+    throw new Error(msg);
+  }
+
   const name = path.split(/[/\\]/).pop() ?? 'file.csv';
   return new File([content], name, { type: 'text/csv' });
 }

@@ -37,11 +37,12 @@ for (const { zip, lat, lon, state, city } of zipCentroids) {
 }
 
 export default function App() {
-  // csvFiles: array of sniffed CSV files in the import pool.  All files in
-  // the pool are the same `kind` — adding a file of a different kind clears
-  // the pool first.  Each entry: { id, name, headers, rows, zipIdx, countIdx,
-  // dateIdx, confidence, kind }
+  // csvFiles: order files (SoldOrderItems, SoldOrders) — drives the map and
+  // order-based charts.  paymentCsvFiles: payment/deposit files — drives the
+  // chart when no order files are loaded.  Both pools coexist so that dropping
+  // all file types at once doesn't discard any files.
   const [csvFiles, setCsvFiles]           = useState([]);
+  const [paymentCsvFiles, setPaymentCsvFiles] = useState([]);
   const [selectedRange, setSelectedRange] = useState({ from: '', to: '' });
   const [activeStyleId, setActiveStyleId] = useState(styles[0].id);
   const [scaleMode, setScaleMode]         = useState('linear');
@@ -65,41 +66,40 @@ export default function App() {
     return zipLookup.get(originZip.padStart(5, '0')) ?? null;
   }, [originZip]);
 
-  // Chart-only kinds (no ZIP data so no map view possible).
-  const poolKind = csvFiles[0]?.kind ?? null;
-  const isPaymentsMode = poolKind === 'etsy-payments' || poolKind === 'etsy-deposits';
+  // All files combined for date-range and file-list purposes.
+  const allFiles = useMemo(
+    () => [...csvFiles, ...paymentCsvFiles],
+    [csvFiles, paymentCsvFiles],
+  );
+
+  const hasOrderData   = csvFiles.length > 0;
+  const hasPaymentData = paymentCsvFiles.length > 0;
+  // Chart-only mode: payment/deposit files loaded but no order files.
+  const isPaymentsMode = !hasOrderData && hasPaymentData;
+  // Kind forwarded to PaymentsView: prefer payment files when that's all we have.
+  const chartKind = isPaymentsMode
+    ? (paymentCsvFiles[0]?.kind ?? 'etsy-payments')
+    : (csvFiles[0]?.kind ?? 'orders');
 
   const dateRange = useMemo(() => {
-    if (!csvFiles.length) return null;
+    if (!allFiles.length) return null;
     const allDates = [];
-    if (isPaymentsMode) {
-      for (const file of csvFiles) {
-        const di = file.headers.findIndex(h => h.toLowerCase() === 'order date');
-        if (di < 0) continue;
-        for (const row of file.rows) {
-          const d = parseIsoDate(row[di]);
-          if (d) allDates.push(d);
-        }
-      }
-    } else {
-      for (const file of csvFiles) {
-        if (file.dateIdx < 0) continue;
-        for (const row of file.rows) {
-          const d = parseIsoDate(row[file.dateIdx]);
-          if (d) allDates.push(d);
-        }
+    for (const file of allFiles) {
+      if (file.dateIdx < 0) continue;
+      for (const row of file.rows) {
+        const d = parseIsoDate(row[file.dateIdx]);
+        if (d) allDates.push(d);
       }
     }
     if (!allDates.length) return null;
     allDates.sort();
     return { min: allDates[0], max: allDates[allDates.length - 1] };
-  }, [csvFiles, isPaymentsMode]);
+  }, [allFiles]);
 
   // Combined zip→count across all order files, with date filter applied
-  // per-file so each file uses its own dateIdx mapping.  Empty in payments
-  // mode.
+  // per-file so each file uses its own dateIdx mapping.
   const csvData = useMemo(() => {
-    if (!csvFiles.length || isPaymentsMode) return [];
+    if (!csvFiles.length) return [];
     const combined = new Map();
     for (const file of csvFiles) {
       const aggregated = aggregateRows(
@@ -111,18 +111,15 @@ export default function App() {
       }
     }
     return [...combined.entries()].map(([zip, count]) => ({ zip, count }));
-  }, [csvFiles, isPaymentsMode, selectedRange.from, selectedRange.to]);
-
-  // Financial aggregation — works for both Etsy Payments and Etsy Sold
-  // Orders exports because aggregatePayments resolves columns from multiple
-  // aliases (Gross Amount | Order Total, Buyer Name | Full Name, etc.).
-  const payments = useMemo(() => {
-    if (!csvFiles.length) return null;
-    return aggregatePayments(
-      csvFiles,
-      selectedRange.from || null, selectedRange.to || null,
-    );
   }, [csvFiles, selectedRange.from, selectedRange.to]);
+
+  // Financial aggregation: prefer dedicated payment/deposit files when loaded;
+  // fall back to order files which also carry revenue data.
+  const payments = useMemo(() => {
+    const src = hasPaymentData ? paymentCsvFiles : csvFiles;
+    if (!src.length) return null;
+    return aggregatePayments(src, selectedRange.from || null, selectedRange.to || null);
+  }, [csvFiles, paymentCsvFiles, hasPaymentData, selectedRange.from, selectedRange.to]);
 
   const { heatPoints, matched, unmatched, total } = useMemo(() => {
     if (!csvData.length) return { heatPoints: [], matched: 0, unmatched: 0, total: 0 };
@@ -159,12 +156,10 @@ export default function App() {
     return { heatPoints, matched, unmatched, total };
   }, [csvData, scaleMode]);
 
-  // Per-ZIP detail bundle for the click-to-inspect popup
+  // Per-ZIP detail bundle for the click-to-inspect popup (order files only).
   const zipDetails = useMemo(
-    () => isPaymentsMode
-      ? new Map()
-      : aggregateZipDetails(csvFiles, selectedRange.from || null, selectedRange.to || null),
-    [csvFiles, isPaymentsMode, selectedRange.from, selectedRange.to],
+    () => aggregateZipDetails(csvFiles, selectedRange.from || null, selectedRange.to || null),
+    [csvFiles, selectedRange.from, selectedRange.to],
   );
 
   // Detail entry for the clicked ZIP, enriched with the centroid lookup's city/state
@@ -198,44 +193,56 @@ export default function App() {
     return { topStates, topZip, stateCount: stateCounts.size };
   }, [csvData]);
 
-  async function handleFile(file) {
+  async function handleFile(fileOrFiles) {
+    const files = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles];
     setError(null);
+    let stage = 'parsing';
     try {
-      const sniff = await sniffCsv(file);
-      if (!sniff.rows.length) throw new Error('No rows found in file.');
+      const settled = await Promise.allSettled(
+        files.map(f => sniffCsv(f).then(sniff => ({ file: f, sniff })))
+      );
 
-      // Chart-only kinds (Payments, Deposits) skip the ZIP sanity-check.
-      const chartOnly = sniff.kind === 'etsy-payments' || sniff.kind === 'etsy-deposits';
-      if (!chartOnly) {
-        const test = aggregateRows(sniff.rows, sniff.zipIdx, sniff.countIdx);
-        if (!test.length) throw new Error('No valid ZIP codes found in the detected column.');
+      stage = 'validating';
+      const orderEntries   = [];
+      const paymentEntries = [];
+
+      for (const r of settled) {
+        if (r.status === 'rejected') { console.error('[ZipMap] parse failed', r.reason); continue; }
+        const { file, sniff } = r.value;
+        if (!sniff.rows.length) { console.warn('[ZipMap] no rows', file.name); continue; }
+        const kind = sniff.kind ?? 'orders';
+        const entry = {
+          id:   `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name: file.name,
+          ...sniff,
+          kind,
+        };
+        if (kind === 'etsy-payments' || kind === 'etsy-deposits') {
+          paymentEntries.push(entry);
+        } else {
+          const test = aggregateRows(sniff.rows, sniff.zipIdx, sniff.countIdx);
+          if (!test.length) { console.warn('[ZipMap] no valid ZIPs', file.name); continue; }
+          orderEntries.push(entry);
+        }
       }
 
-      const newKind = sniff.kind ?? 'orders';
-      const entry = {
-        id:   `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        name: file.name,
-        ...sniff,
-        kind: newKind,
-      };
+      if (!orderEntries.length && !paymentEntries.length) {
+        throw new Error('No valid files could be imported.');
+      }
 
-      setCsvFiles(prev => {
-        const currentKind = prev[0]?.kind ?? newKind;
-        // Mode switch — clear the pool and reset filters when the new file's
-        // kind differs from what's already loaded.
-        if (currentKind !== newKind) {
-          setSelectedRange({ from: '', to: '' });
-          return [entry];
-        }
-        return [...prev, entry];
-      });
+      stage = 'done';
+      if (orderEntries.length)   setCsvFiles(prev => [...prev, ...orderEntries]);
+      if (paymentEntries.length) setPaymentCsvFiles(prev => [...prev, ...paymentEntries]);
     } catch (e) {
-      setError(e.message ?? 'Failed to parse CSV.');
+      const msg = e?.message ?? String(e) ?? 'Unknown error';
+      console.error('[ZipMap] import failed', { stage, error: msg, stack: e?.stack });
+      setError(`[${stage}] ${msg}`);
     }
   }
 
   function handleRemoveFile(id) {
     setCsvFiles(prev => prev.filter(f => f.id !== id));
+    setPaymentCsvFiles(prev => prev.filter(f => f.id !== id));
   }
 
   // Column-mapper edits propagate to every file whose headers match the
@@ -272,9 +279,7 @@ export default function App() {
   const ActiveStyle = styles.find(s => s.id === activeStyleId)?.component;
   const arcsActive  = activeStyleId === 'arcs';
   const needsOrigin = arcsActive && heatPoints.length > 0 && !originEntry;
-  // True whenever the chart dashboard is visible — either because we're in a
-  // chart-only kind (payments / deposits) or the user toggled Chart in orders
-  // mode.  Used to hide every map-specific sidebar control.
+  // True whenever the chart dashboard is visible.
   const isChartView = isPaymentsMode || viewMode === 'chart';
   const firstFile = csvFiles[0] ?? null; // drives the ColumnMapper UI
 
@@ -289,11 +294,11 @@ export default function App() {
           <div className="flex flex-col gap-2">
             <DropZone
               onFile={handleFile}
-              hasFiles={csvFiles.length > 0 || isPaymentsMode}
+              hasFiles={csvFiles.length > 0 || paymentCsvFiles.length > 0}
               error={error}
             />
-            <FileList files={csvFiles} onRemove={handleRemoveFile} />
-            {csvFiles.length === 0 && !isPaymentsMode && (
+            <FileList files={allFiles} onRemove={handleRemoveFile} />
+            {csvFiles.length === 0 && paymentCsvFiles.length === 0 && (
               <button
                 onClick={handleSample}
                 className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-blue-400 transition-colors text-left"
@@ -302,17 +307,14 @@ export default function App() {
                 Try with sample data →
               </button>
             )}
-            {csvFiles.length > 1 && !isPaymentsMode && (
+            {csvFiles.length > 1 && (
               <p className="text-xs text-slate-500">
-                Combined: {csvData.length.toLocaleString()} unique ZIP{csvData.length !== 1 ? 's' : ''}
+                Orders: {csvData.length.toLocaleString()} unique ZIP{csvData.length !== 1 ? 's' : ''}
               </p>
             )}
-            {csvFiles.length > 1 && isPaymentsMode && payments && (
+            {paymentCsvFiles.length > 0 && payments && hasPaymentData && (
               <p className="text-xs text-slate-500">
-                Combined: {payments.totals.orderCount.toLocaleString()}{' '}
-                {poolKind === 'etsy-deposits'
-                  ? `deposit${payments.totals.orderCount !== 1 ? 's' : ''}`
-                  : `payment${payments.totals.orderCount !== 1 ? 's' : ''}`}
+                Payments: {payments.totals.orderCount.toLocaleString()} record{payments.totals.orderCount !== 1 ? 's' : ''}
               </p>
             )}
           </div>
@@ -332,10 +334,10 @@ export default function App() {
           </CollapsibleSection>
         )}
 
-        {/* ── Chart-only kind badge ── */}
-        {isPaymentsMode && (
+        {/* ── Payment/deposit file badge ── */}
+        {hasPaymentData && (
           <div className="self-start text-xs font-medium text-emerald-400 bg-emerald-950/50 px-1.5 py-0.5 rounded">
-            {poolKind === 'etsy-deposits' ? 'Etsy Deposits ✓' : 'Etsy Payments ✓'}
+            {paymentCsvFiles.some(f => f.kind === 'etsy-deposits') ? 'Etsy Deposits ✓' : 'Etsy Payments ✓'}
           </div>
         )}
 
@@ -432,14 +434,14 @@ export default function App() {
 
         {/* View-mode toggle — visible whenever there's data.  Map is disabled
             in payments mode (no ZIPs to plot). */}
-        {csvFiles.length > 0 && (
+        {allFiles.length > 0 && (
           <div className="flex items-center gap-1.5 px-4 py-2 border-b border-slate-800 bg-slate-900/60">
             <ViewToggleBtn
               label="🗺️ Map"
-              active={viewMode === 'map' && !isPaymentsMode}
-              disabled={isPaymentsMode}
+              active={viewMode === 'map' && hasOrderData}
+              disabled={!hasOrderData}
               onClick={() => setViewMode('map')}
-              title={isPaymentsMode ? `${poolKind === 'etsy-deposits' ? 'Deposit' : 'Payments'} CSVs have no ZIP data` : undefined}
+              title={!hasOrderData ? 'Load order files (SoldOrders / SoldOrderItems) to see the map' : undefined}
             />
             <ViewToggleBtn
               label="📊 Chart"
@@ -451,7 +453,7 @@ export default function App() {
 
         {/* ── Chart view (or payments-only when no ZIP data) ───────────── */}
         {(viewMode === 'chart' || isPaymentsMode) && payments && (
-          <PaymentsView payments={payments} kind={poolKind ?? 'orders'} />
+          <PaymentsView payments={payments} kind={chartKind} />
         )}
 
         {/* ── Map view ─────────────────────────────────────────────────── */}
