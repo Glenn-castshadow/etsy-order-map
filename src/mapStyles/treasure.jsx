@@ -1,48 +1,57 @@
 import { Marker } from 'react-leaflet';
 import L from 'leaflet';
 
-const MIN_SIZE   = 9;
-const MAX_SIZE   = 22;
-const MIN_LAYERS = 1;
-const MAX_LAYERS = 5;
+const MIN_COINS = 5;
+const MAX_COINS = 18;
+const COIN_PX   = 8;   // ~50% of prior 9-22px range
 
-// Deterministic jitter — same result every render for a given lat/lng
+function frac(x) { return x - Math.floor(x); }
+
 function stableJitter(lat, lng) {
   const u = Math.sin(lat * 92.3  + lng * 187.6) * 43758.5453;
   const v = Math.sin(lat * 47.9  + lng * 283.1) * 43758.5453;
   return {
-    dLat: (u - Math.floor(u) - 0.5) * 0.30,  // ±0.15°
-    dLng: (v - Math.floor(v) - 0.5) * 0.40,  // ±0.20°
+    dLat: (frac(u) - 0.5) * 0.30,
+    dLng: (frac(v) - 0.5) * 0.40,
   };
 }
 
 function makeTreasureIcon(weight) {
-  const size    = Math.round(MIN_SIZE + weight * (MAX_SIZE - MIN_SIZE));
-  const layers  = Math.round(MIN_LAYERS + weight * (MAX_LAYERS - MIN_LAYERS));
-  const step    = Math.round(size * 0.42);
-  const hasBag  = weight >= 0.66;
-  const bagSize = Math.round(size * 0.85);
+  const count = Math.round(MIN_COINS + weight * (MAX_COINS - MIN_COINS));
 
-  const coinsH = size + step * (layers - 1);
-  const totalH = hasBag ? coinsH + Math.round(bagSize * 0.65) : coinsH;
-  const w      = size + 10;
+  // Pile footprint scales with weight
+  const pileW = Math.round(COIN_PX * (3 + weight * 4.5));  // 24–60px wide
+  const pileH = Math.round(pileW * 0.30);                   // flat mound, ~1:3 aspect
+  const w     = pileW + COIN_PX * 2;                        // padding for edge coins
+  const h     = pileH + COIN_PX;
 
-  const coins = Array.from({ length: layers }, (_, i) => {
-    // deterministic per-coin horizontal wobble
-    const r = Math.sin((i + 1) * 73.1) * 43758.5453;
-    const nudge = Math.round((r - Math.floor(r) - 0.5) * size * 0.9);
-    return `<span style="position:absolute;bottom:${i * step}px;left:calc(50% + ${nudge}px);transform:translateX(-50%);font-size:${size}px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.8));">🪙</span>`;
+  const coins = Array.from({ length: count }, (_, i) => {
+    const u = frac(Math.sin(i * 73.1  + 17.3) * 43758.5453);
+    const v = frac(Math.sin(i * 47.9  + 31.7) * 43758.5453);
+    const s = frac(Math.sin(i * 131.7 + 53.1) * 43758.5453);
+
+    // yNorm 0=apex, 1=base — bias toward base so pile looks full at bottom
+    const yNorm = Math.pow(v, 0.60);
+    const top   = Math.round(yNorm * pileH);
+
+    // x range widens toward the base
+    const xRange = pileW * (0.15 + 0.85 * yNorm);
+    const left   = Math.round(w / 2 + (u - 0.5) * xRange - COIN_PX / 2);
+
+    // slight per-coin size variation for depth illusion
+    const sz  = Math.round(COIN_PX * (0.80 + s * 0.40));
+
+    // coins lower on screen render in front
+    const z = top + 1;
+
+    return `<span style="position:absolute;top:${top}px;left:${left}px;font-size:${sz}px;line-height:1;z-index:${z};filter:drop-shadow(0 1px 1px rgba(0,0,0,0.7));">🪙</span>`;
   }).join('');
 
-  const bag = hasBag
-    ? `<span style="position:absolute;bottom:${coinsH - Math.round(bagSize * 0.35)}px;left:50%;transform:translateX(-50%);font-size:${bagSize}px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.8));">💰</span>`
-    : '';
-
   return L.divIcon({
-    html:       `<div style="position:relative;width:${w}px;height:${totalH}px;">${coins}${bag}</div>`,
+    html:       `<div style="position:relative;width:${w}px;height:${h}px;overflow:visible;">${coins}</div>`,
     className:  '',
-    iconSize:   [w, totalH],
-    iconAnchor: [w / 2, totalH],
+    iconSize:   [w, h],
+    iconAnchor: [w / 2, h],
   });
 }
 
