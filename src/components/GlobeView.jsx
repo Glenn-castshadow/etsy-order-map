@@ -10,10 +10,16 @@ function withAlpha(hslaStr, alpha) {
   return hslaStr.replace(/,[\d.]+\)$/, `,${alpha})`);
 }
 
+// Three.js MOUSE action constants:  ROTATE=0, DOLLY=1, PAN=2
+const M_ROTATE = 0;
+const M_DOLLY  = 1;
+const M_PAN    = 2;
+
 export default function GlobeView({ data, origin, showSpikes = true, showArcs = true, arcsAnimated = true, gradientId = 'spectrum' }) {
   const globeRef     = useRef(null);
   const containerRef = useRef(null);
   const [dims, setDims] = useState({ w: 0, h: 0 });
+  const [isReady, setIsReady] = useState(false);
 
   const gradient = heatGradients.find(g => g.id === gradientId) ?? defaultGradient;
 
@@ -30,29 +36,53 @@ export default function GlobeView({ data, origin, showSpikes = true, showArcs = 
     return () => ro.disconnect();
   }, []);
 
-  // On globe ready — fly to USA, start slow auto-rotate
+  // On globe ready — fly to USA and signal the controls-config effect below
   function handleGlobeReady() {
     const g = globeRef.current;
     if (!g) return;
     g.pointOfView({ lat: 38, lng: -96, altitude: 2.1 }, 900);
-    const ctrl = g.controls();
-    ctrl.autoRotate        = true;
-    ctrl.autoRotateSpeed   = 0.35;
-    ctrl.enableDamping     = true;
-    ctrl.dampingFactor     = 0.25;  // more friction → stops quickly, easier to aim
-    ctrl.rotateSpeed       = 0.6;   // slower rotation → precise angle control
-    ctrl.enablePan         = true;
-    ctrl.panSpeed          = 1.2;
-    ctrl.screenSpacePanning = true; // pan in screen space (feels like a map)
-
-    // Three-globe overrides OrbitControls.mouseButtons internally — re-assign
-    // explicitly so left = rotate and right = pan.  THREE.MOUSE.ROTATE = 0,
-    // THREE.MOUSE.PAN = 2.  Using numeric literals avoids a THREE import.
-    ctrl.mouseButtons = { LEFT: 0, MIDDLE: 1, RIGHT: 2 };
-
-    // Touch: one-finger rotate, two-finger pan
-    ctrl.touches = { ONE: 0, TWO: 2 };
+    setIsReady(true);
   }
+
+  // Controls configuration — re-applied at several intervals after ready
+  // because three-globe sometimes resets mouseButtons after onGlobeReady
+  // fires.  Properties on existing objects are MUTATED, not replaced.
+  useEffect(() => {
+    if (!isReady) return;
+
+    const apply = () => {
+      const ctrl = globeRef.current?.controls();
+      if (!ctrl) return;
+
+      ctrl.autoRotateSpeed    = 0.35;
+      ctrl.enableDamping      = true;
+      ctrl.dampingFactor      = 0.25;
+      ctrl.rotateSpeed        = 0.6;
+      ctrl.enablePan          = true;
+      ctrl.panSpeed           = 1.2;
+      ctrl.screenSpacePanning = true;
+
+      if (ctrl.mouseButtons) {
+        ctrl.mouseButtons.LEFT   = M_ROTATE;
+        ctrl.mouseButtons.MIDDLE = M_DOLLY;
+        ctrl.mouseButtons.RIGHT  = M_PAN;
+      }
+      if (ctrl.touches) {
+        ctrl.touches.ONE = M_ROTATE;
+        ctrl.touches.TWO = M_PAN;
+      }
+    };
+
+    // Initial auto-rotate (one-time)
+    const ctrl0 = globeRef.current?.controls();
+    if (ctrl0) ctrl0.autoRotate = true;
+
+    apply();
+    const t1 = setTimeout(apply, 50);
+    const t2 = setTimeout(apply, 250);
+    const t3 = setTimeout(apply, 800);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [isReady]);
 
   // Stop auto-rotate the moment the user grabs the globe
   function handlePointerDown() {
