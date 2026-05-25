@@ -42,10 +42,16 @@ export function parseIsoDate(str) {
   // YYYY-MM-DD (already ISO)
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
 
-  // MM/DD/YYYY
-  const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  // MM/DD/YYYY  or  MM/DD/YY  (Etsy's Sold Orders export uses 2-digit years)
+  const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
   if (mdy) {
-    return `${mdy[3]}-${mdy[1].padStart(2, '0')}-${mdy[2].padStart(2, '0')}`;
+    let year = mdy[3];
+    if (year.length === 2) {
+      // Common pivot:  00–69 → 2000–2069,  70–99 → 1970–1999
+      const yn = parseInt(year, 10);
+      year = String(yn < 70 ? 2000 + yn : 1900 + yn);
+    }
+    return `${year}-${mdy[1].padStart(2, '0')}-${mdy[2].padStart(2, '0')}`;
   }
 
   // MMM-DD-YYYY  or  MMM DD, YYYY  (e.g. Jan-15-2024, Jan 15, 2024)
@@ -282,7 +288,15 @@ function fillMonthRange(min, max) {
 
 function normalizeZip(val) {
   if (val == null) return null;
-  const s = String(val).trim().replace(/\.0+$/, '');
-  if (!s || s.length < 3 || s.length > 5) return null;
+  let s = String(val).trim().replace(/\.0+$/, '');
+  if (!s) return null;
+  // Strip ZIP+4 suffix ("48124-1023" → "48124"); Etsy's Sold Orders export
+  // emits this format whenever the buyer provided one.
+  const dash = s.indexOf('-');
+  if (dash > 0) s = s.slice(0, dash);
+  s = s.trim();
+  // Concatenated ZIP+4 with no dash (e.g. "605131236" → "60513")
+  if (s.length === 9 && /^\d{9}$/.test(s)) s = s.slice(0, 5);
+  if (s.length < 3 || s.length > 5 || !/^\d+$/.test(s)) return null;
   return s.padStart(5, '0');
 }
