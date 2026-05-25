@@ -39,9 +39,10 @@ export default function App() {
   const [activeStyleId, setActiveStyleId] = useState(styles[0].id);
   const [scaleMode, setScaleMode]         = useState('linear');
   const [heatGradientId, setHeatGradientId]   = useState('spectrum');
-  const [globeGradientId, setGlobeGradientId] = useState('spectrum');
-  const [globeShowSpikes, setGlobeShowSpikes] = useState(true);
-  const [globeShowArcs,   setGlobeShowArcs]   = useState(true);
+  const [globeGradientId,   setGlobeGradientId]   = useState('spectrum');
+  const [globeShowSpikes,   setGlobeShowSpikes]   = useState(true);
+  const [globeShowArcs,     setGlobeShowArcs]     = useState(true);
+  const [globeArcsAnimated, setGlobeArcsAnimated] = useState(true);
   const [baseMap, setBaseMap]             = useState('flat');
   const [fileName, setFileName]           = useState(null);
   const [error, setError]                 = useState(null);
@@ -227,10 +228,11 @@ export default function App() {
 
         {baseMap === 'globe' && heatPoints.length > 0 && (
           <GlobeLayerControls
-            showSpikes={globeShowSpikes} onSpikes={setGlobeShowSpikes}
-            showArcs={globeShowArcs}     onArcs={setGlobeShowArcs}
+            showSpikes={globeShowSpikes}     onSpikes={setGlobeShowSpikes}
+            showArcs={globeShowArcs}         onArcs={setGlobeShowArcs}
+            arcsAnimated={globeArcsAnimated} onArcsAnimated={setGlobeArcsAnimated}
             hasOrigin={!!originEntry}
-            gradientId={globeGradientId} onGradient={setGlobeGradientId}
+            gradientId={globeGradientId}     onGradient={setGlobeGradientId}
           />
         )}
 
@@ -276,6 +278,7 @@ export default function App() {
               origin={originEntry}
               showSpikes={globeShowSpikes}
               showArcs={globeShowArcs}
+              arcsAnimated={globeArcsAnimated}
               gradientId={globeGradientId}
             />
           ) : (

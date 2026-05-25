@@ -10,7 +10,7 @@ function withAlpha(hslaStr, alpha) {
   return hslaStr.replace(/,[\d.]+\)$/, `,${alpha})`);
 }
 
-export default function GlobeView({ data, origin, showSpikes = true, showArcs = true, gradientId = 'spectrum' }) {
+export default function GlobeView({ data, origin, showSpikes = true, showArcs = true, arcsAnimated = true, gradientId = 'spectrum' }) {
   const globeRef     = useRef(null);
   const containerRef = useRef(null);
   const [dims, setDims] = useState({ w: 0, h: 0 });
@@ -118,9 +118,9 @@ export default function GlobeView({ data, origin, showSpikes = true, showArcs = 
           arcColor="color"
           arcAltitudeAutoScale={0.35}
           arcStroke={d => 0.2 + d.weight * 0.7}
-          arcDashLength={0.45}
-          arcDashGap={0.2}
-          arcDashAnimateTime={2200}
+          arcDashLength={arcsAnimated ? 0.45 : 1}
+          arcDashGap={arcsAnimated ? 0.2 : 0}
+          arcDashAnimateTime={arcsAnimated ? 2200 : 0}
         />
       )}
     </div>

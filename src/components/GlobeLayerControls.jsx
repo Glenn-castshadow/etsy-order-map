@@ -1,10 +1,11 @@
 import { heatGradients } from '../mapStyles/heatGradients.js';
 
 export default function GlobeLayerControls({
-  showSpikes, onSpikes,
-  showArcs,   onArcs,
+  showSpikes,   onSpikes,
+  showArcs,     onArcs,
+  arcsAnimated, onArcsAnimated,
   hasOrigin,
-  gradientId, onGradient,
+  gradientId,   onGradient,
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -23,6 +24,12 @@ export default function GlobeLayerControls({
             title={!hasOrigin ? 'Enter a shop ZIP to enable arcs' : undefined}
           />
         </div>
+        {showArcs && hasOrigin && (
+          <div className="flex gap-1.5">
+            <Toggle label="Animated" active={arcsAnimated}  onClick={() => onArcsAnimated(true)}  />
+            <Toggle label="Solid"    active={!arcsAnimated} onClick={() => onArcsAnimated(false)} />
+          </div>
+        )}
       </div>
 
       {/* ── Gradient picker — always visible ── */}
