@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "etsy-order-map",
-  "version": "0.3.45",
+  "version": "0.3.46",
   "identifier": "com.castshadow.etsy-order-map",
   "build": {
     "frontendDist": "../dist",
@@ -28,7 +28,9 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
