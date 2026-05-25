@@ -7,22 +7,35 @@ import zipCentroids from './data/zipCentroids.json';
 import { styles } from './mapStyles/index.js';
 import DropZone from './components/DropZone.jsx';
 import ColumnMapper from './components/ColumnMapper.jsx';
+import DateRangeFilter from './components/DateRangeFilter.jsx';
 import StyleSwitcher from './components/StyleSwitcher.jsx';
 import Legend from './components/Legend.jsx';
 import ExportButtons from './components/ExportButtons.jsx';
-import { sniffCsv, aggregateRows } from './utils/parseCsv.js';
+import { sniffCsv, aggregateRows, parseIsoDate } from './utils/parseCsv.js';
 
-// Built once at module load — O(1) lookup by 5-digit string zip
 const zipLookup = new Map(
   zipCentroids.map(({ zip, lat, lon }) => [zip, { lat, lng: lon }])
 );
 
 export default function App() {
-  const [rawCsv, setRawCsv] = useState(null);  // { headers, rows, zipIdx, countIdx, confidence }
-  const [csvData, setCsvData] = useState([]);   // [{ zip, count }]
+  const [rawCsv, setRawCsv]           = useState(null);
+  const [csvData, setCsvData]         = useState([]);
+  const [selectedRange, setSelectedRange] = useState({ from: '', to: '' });
   const [activeStyleId, setActiveStyleId] = useState(styles[0].id);
-  const [fileName, setFileName] = useState(null);
-  const [error, setError] = useState(null);
+  const [fileName, setFileName]       = useState(null);
+  const [error, setError]             = useState(null);
+  const mapRef = useRef(null);
+
+  // Full date span present in the file — null when no date column detected
+  const dateRange = useMemo(() => {
+    if (!rawCsv || rawCsv.dateIdx < 0) return null;
+    const dates = rawCsv.rows
+      .map(r => parseIsoDate(r[rawCsv.dateIdx]))
+      .filter(Boolean)
+      .sort();
+    if (!dates.length) return null;
+    return { min: dates[0], max: dates[dates.length - 1] };
+  }, [rawCsv]);
 
   const { heatPoints, matched, unmatched, total } = useMemo(() => {
     if (!csvData.length) return { heatPoints: [], matched: 0, unmatched: 0, total: 0 };
@@ -38,12 +51,21 @@ export default function App() {
     return { heatPoints, matched, unmatched, total };
   }, [csvData]);
 
+  function reAggregate(sniff, from, to) {
+    return aggregateRows(
+      sniff.rows, sniff.zipIdx, sniff.countIdx,
+      sniff.dateIdx,
+      from || null, to || null,
+    );
+  }
+
   async function handleFile(file) {
     setError(null);
+    setSelectedRange({ from: '', to: '' });
     try {
       const sniff = await sniffCsv(file);
       if (!sniff.rows.length) throw new Error('No rows found in file.');
-      const parsed = aggregateRows(sniff.rows, sniff.zipIdx, sniff.countIdx);
+      const parsed = reAggregate(sniff, '', '');
       if (!parsed.length) throw new Error('No valid ZIP codes found in the detected column.');
       setRawCsv(sniff);
       setCsvData(parsed);
@@ -57,11 +79,15 @@ export default function App() {
     if (!rawCsv) return;
     const updated = { ...rawCsv, zipIdx, countIdx };
     setRawCsv(updated);
-    setCsvData(aggregateRows(rawCsv.rows, zipIdx, countIdx));
+    setCsvData(reAggregate(updated, selectedRange.from, selectedRange.to));
+  }
+
+  function handleDateRange(from, to) {
+    setSelectedRange({ from, to });
+    if (rawCsv) setCsvData(reAggregate(rawCsv, from, to));
   }
 
   const ActiveStyle = styles.find(s => s.id === activeStyleId)?.component;
-  const mapRef = useRef(null);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-900 text-white">
@@ -82,6 +108,16 @@ export default function App() {
             countIdx={rawCsv.countIdx}
             confidence={rawCsv.confidence}
             onChange={handleColumnChange}
+          />
+        )}
+
+        {dateRange && (
+          <DateRangeFilter
+            min={dateRange.min}
+            max={dateRange.max}
+            from={selectedRange.from}
+            to={selectedRange.to}
+            onChange={handleDateRange}
           />
         )}
 
