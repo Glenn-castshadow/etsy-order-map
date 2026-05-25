@@ -4,8 +4,8 @@ import L from 'leaflet';
 import pinUrl from '../../images/pushpin_01.png';
 
 // ── Pin sizing ────────────────────────────────────────────────────────────────
-const PIN_W_MIN = 22;   // px, lowest-weight pin
-const PIN_W_MAX = 38;   // px, highest-weight pin
+const PIN_W_MIN = 11;   // px, lowest-weight pin
+const PIN_W_MAX = 19;   // px, highest-weight pin
 const ASPECT    = 1.35; // h / w ratio of the pushpin_01 image
 
 // ── Animation timing ─────────────────────────────────────────────────────────
