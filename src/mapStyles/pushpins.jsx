@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Marker } from 'react-leaflet';
 import L from 'leaflet';
-import pinUrl from '../../images/pushpin_01.png';
+import pinUrl from '../../images/Asset 1.png';
 
 // ── Pin sizing ────────────────────────────────────────────────────────────────
 const PIN_W_MIN = 11;   // px, lowest-weight pin
