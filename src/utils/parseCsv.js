@@ -8,8 +8,8 @@ const ZIP_ALIASES = new Set([
   'Zip', 'ZIP', 'Zip Code', 'ZipCode', 'zip_code',
   'Postal Code', 'PostalCode', 'postal_code',
   'Billing Zip', 'shipping_postcode', 'billing_postcode',
-  // eBay Seller Hub Orders report (confirmed field name)
-  'Buyer Zip', 'Zip Code',
+  // eBay Selling Manager / Seller Hub (confirmed column index 9)
+  'Buyer Postcode', 'Buyer Zip', 'Zip Code',
   // Poshmark sales CSV (confirmed field name)
   'Buyer Zip Code',
   // BrickLink order export
@@ -26,8 +26,8 @@ const COUNT_ALIASES = new Set([
 const DATE_ALIASES = new Set([
   'Sale Date', 'Order Date', 'Date', 'Created At', 'Transaction Date',
   'Sold Date', 'Purchase Date', 'sale_date', 'order_date', 'created_at',
-  // eBay Seller Hub
-  'Paid on Date', 'Checkout Date',
+  // eBay Selling Manager (confirmed field names)
+  'Sales Date', 'Paid On Date', 'Checkout Date',
   // BrickLink
   'Date Ordered',
 ]);
@@ -35,6 +35,15 @@ const DATE_ALIASES = new Set([
 const ZIP_REGEX   = /\bzip\b|postal.?code/i;
 const COUNT_REGEX = /\bcount\b|\bqty\b|quantity|\bsales\b|\borders\b/i;
 const DATE_REGEX  = /\bdate\b|created.?at/i;
+
+// ── Money parsing ─────────────────────────────────────────────────────────
+// Strips currency symbols, commas, and whitespace before parsing.
+// Handles Poshmark's "$16.00 " format, eBay's "1,234.56", etc.
+function parseMoney(val) {
+  if (val == null) return 0;
+  const n = parseFloat(String(val).replace(/[$,\s]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
 
 // ── Date normalization ─────────────────────────────────────────────────────
 
@@ -141,8 +150,10 @@ function looksLikeEtsyDepositsCsv(headers) {
 function looksLikeEbayCsv(headers) {
   if (!headers) return false;
   const has = (re) => headers.some(h => re.test(h));
+  // "Sales Record Number" is col 0; "User ID" is col 1 (buyer's eBay handle).
+  // Older Seller Hub reports used "Buyer Username" — accept both.
   return has(/sales\s*record\s*number/i)
-      && has(/buyer\s*username/i);
+      && (has(/^user\s*id$/i) || has(/buyer\s*username/i));
 }
 
 /**
@@ -318,8 +329,8 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
       // BrickLink
       'Date Ordered',
     );
-    const iBuyer   = idxAny('Buyer', 'Buyer Username');
-    const iBuyerNm = idxAny('Buyer Name', 'Full Name', 'Ship Name', 'Shipping Recipient');
+    const iBuyer   = idxAny('Buyer', 'Buyer Username', 'User ID');
+    const iBuyerNm = idxAny('Buyer Full Name', 'Buyer Name', 'Full Name', 'Ship Name', 'Shipping Recipient');
     const iStatus  = idxAny('Status', 'Order Status');
     const iCur     = idxAny('Currency', 'Currency Code');
     // Product-level columns
@@ -341,10 +352,10 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
       if (fromDate && date < fromDate) continue;
       if (toDate   && date > toDate)   continue;
 
-      const gross  = +parseFloat(row[iGross])  || 0;
-      const fees   = +parseFloat(row[iFees])   || 0;
-      const net    = +parseFloat(row[iNet])    || 0;
-      const refund = +parseFloat(row[iRefund]) || 0;
+      const gross  = parseMoney(row[iGross]);
+      const fees   = parseMoney(row[iFees]);
+      const net    = parseMoney(row[iNet]);
+      const refund = parseMoney(row[iRefund]);
 
       totals.gross  += gross;
       totals.fees   += fees;
@@ -486,8 +497,8 @@ export function aggregateZipDetails(files, fromDate = null, toDate = null) {
       return -1;
     };
     const iCustomer = idxAny(
-      'Full Name', 'Ship Name', 'Buyer Name', 'Buyer', 'Customer',
-      'Buyer Username',                         // eBay / Poshmark / BrickLink
+      'Buyer Full Name', 'Full Name', 'Ship Name', 'Buyer Name', 'Buyer', 'Customer',
+      'User ID', 'Buyer Username',              // eBay
       'Shipping Recipient',
     );
     const iTotal    = idxAny(
@@ -498,8 +509,8 @@ export function aggregateZipDetails(files, fromDate = null, toDate = null) {
     );
     const iItemNm   = idxAny('Item Name', 'Item Title', 'Title', 'Listing Title', 'Product', 'Description');
     const iSku      = idxAny('SKU', 'Custom Label', 'Item Number', 'Item');
-    const iCity     = idxAny('Ship City', 'City', 'Buyer City', 'Shipping City');
-    const iState    = idxAny('Ship State', 'State', 'Buyer State', 'Province', 'Shipping State');
+    const iCity     = idxAny('Ship City', 'City', 'Buyer City', 'Shipping City', 'Ship to City');
+    const iState    = idxAny('Ship State', 'State', 'Buyer State', 'Province', 'Shipping State', 'Ship to State');
 
     for (const row of rows) {
       if (dateIdx >= 0 && (fromDate || toDate)) {
@@ -527,7 +538,7 @@ export function aggregateZipDetails(files, fromDate = null, toDate = null) {
         out.set(zip, entry);
       }
 
-      const total    = iTotal    >= 0 ? +parseFloat(row[iTotal])    || 0 : 0;
+      const total    = iTotal    >= 0 ? parseMoney(row[iTotal]) : 0;
       const items    = countIdx  >= 0 ? +parseFloat(row[countIdx])  || 1 : 1;
       const customer = iCustomer >= 0 ? String(row[iCustomer] || '').trim() : '';
       const itemName = iItemNm   >= 0 ? String(row[iItemNm] || '').trim() : '';
