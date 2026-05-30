@@ -27,6 +27,14 @@ import ZipDetailPopup from './components/ZipDetailPopup.jsx';
 import logoSmall from '../images/logo_small.png';
 import sampleCsv from './data/sample-orders.csv?raw';
 
+const PLATFORM_LABELS = {
+  'etsy-payments':   'Etsy Payments',
+  'etsy-deposits':   'Etsy Deposits',
+  'poshmark-sales':  'Poshmark Sales',
+  'ebay-orders':     'eBay Orders',
+  'bricklink-orders':'BrickLink Orders',
+};
+
 const zipLookup      = new Map();
 const zipStateLookup = new Map();
 const zipCityLookup  = new Map();
@@ -217,11 +225,14 @@ export default function App() {
           ...sniff,
           kind,
         };
-        if (kind === 'etsy-payments' || kind === 'etsy-deposits') {
+        // Etsy financial exports have no ZIP → payments pool only.
+        // Poshmark sales CSV has Buyer Zip Code → orders pool (map + charts).
+        const isPaymentsOnly = kind === 'etsy-payments' || kind === 'etsy-deposits';
+        if (isPaymentsOnly) {
           paymentEntries.push(entry);
         } else {
           const test = aggregateRows(sniff.rows, sniff.zipIdx, sniff.countIdx);
-          if (!test.length) { console.warn('[ZipMap] no valid ZIPs', file.name); continue; }
+          if (!test.length) { console.warn('[OrderMap] no valid ZIPs', file.name); continue; }
           orderEntries.push(entry);
         }
       }
@@ -334,12 +345,18 @@ export default function App() {
           </CollapsibleSection>
         )}
 
-        {/* ── Payment/deposit file badge ── */}
-        {hasPaymentData && (
-          <div className="self-start text-xs font-medium text-emerald-400 bg-emerald-950/50 px-1.5 py-0.5 rounded">
-            {paymentCsvFiles.some(f => f.kind === 'etsy-deposits') ? 'Etsy Deposits ✓' : 'Etsy Payments ✓'}
+        {/* ── Payment/deposit file badges ── */}
+        {paymentCsvFiles.map(f => (
+          <div key={f.id} className="self-start text-xs font-medium text-emerald-400 bg-emerald-950/50 px-1.5 py-0.5 rounded">
+            {PLATFORM_LABELS[f.kind] ?? 'Financial Data'} ✓
           </div>
-        )}
+        ))}
+        {/* ── Order file platform badges (eBay / BrickLink) ── */}
+        {csvFiles.filter(f => f.kind === 'ebay-orders' || f.kind === 'bricklink-orders').map(f => (
+          <div key={f.id} className="self-start text-xs font-medium text-sky-400 bg-sky-950/50 px-1.5 py-0.5 rounded">
+            {PLATFORM_LABELS[f.kind]} ✓
+          </div>
+        ))}
 
         {/* ── Date Range ── */}
         {dateRange && (
@@ -392,7 +409,7 @@ export default function App() {
               </CollapsibleSection>
             )}
 
-            {arcsActive && (
+            {(arcsActive || baseMap === 'globe') && (
               <CollapsibleSection title="Ship From">
                 <OriginInput
                   value={originZip}

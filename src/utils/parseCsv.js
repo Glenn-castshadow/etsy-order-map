@@ -3,20 +3,33 @@ import Papa from 'papaparse';
 // ── Column alias tables ────────────────────────────────────────────────────
 
 const ZIP_ALIASES = new Set([
+  // Etsy
   'Ship Zipcode', 'Ship Zip', 'Shipping Zip Code', 'Shipping Zip',
   'Zip', 'ZIP', 'Zip Code', 'ZipCode', 'zip_code',
   'Postal Code', 'PostalCode', 'postal_code',
   'Billing Zip', 'shipping_postcode', 'billing_postcode',
+  // eBay Seller Hub Orders report (confirmed field name)
+  'Buyer Zip', 'Zip Code',
+  // Poshmark sales CSV (confirmed field name)
+  'Buyer Zip Code',
+  // BrickLink order export
+  'Buyer Postal Code', 'Ship Postal Code', 'Postal Code',
 ]);
 
 const COUNT_ALIASES = new Set([
   'Quantity', 'Qty', 'Count', 'Orders', 'Sales', 'Items', 'Units',
   'Number of Items', 'Item Count',
+  // eBay
+  'Quantity Sold', 'Total Quantity',
 ]);
 
 const DATE_ALIASES = new Set([
   'Sale Date', 'Order Date', 'Date', 'Created At', 'Transaction Date',
   'Sold Date', 'Purchase Date', 'sale_date', 'order_date', 'created_at',
+  // eBay Seller Hub
+  'Paid on Date', 'Checkout Date',
+  // BrickLink
+  'Date Ordered',
 ]);
 
 const ZIP_REGEX   = /\bzip\b|postal.?code/i;
@@ -120,6 +133,48 @@ function looksLikeEtsyDepositsCsv(headers) {
   return headers.some(h => /bank account ending/i.test(h));
 }
 
+/**
+ * eBay Seller Hub "Orders" report CSV.
+ * Confirmed distinctive columns: "Sales Record Number" + "Buyer Username" +
+ * "Buyer Zip" (or "Zip Code").  eBay's report also always has "Item Title".
+ */
+function looksLikeEbayCsv(headers) {
+  if (!headers) return false;
+  const has = (re) => headers.some(h => re.test(h));
+  return has(/sales\s*record\s*number/i)
+      && has(/buyer\s*username/i);
+}
+
+/**
+ * Poshmark "My Sales Report" CSV.
+ * Confirmed columns (from real export): "Order Id", "Listing Title",
+ * "Net Earnings", "Buyer Zip Code", "Buyer Username", "Bundle Order?".
+ * Poshmark DOES include buyer ZIP — routes to orders (map + charts).
+ */
+function looksLikePoshmarkCsv(headers) {
+  if (!headers) return false;
+  const has = (re) => headers.some(h => re.test(h));
+  return has(/^order\s*id$/i)
+      && has(/net\s*earnings/i)
+      && has(/buyer\s*zip\s*code/i);
+}
+
+/**
+ * BrickLink "Orders Received" export CSV.
+ * Distinctive: "Order ID" + "Date Ordered" + "Grand Total" with no
+ * "Sales Record Number" (eBay's marker) and no "Net Earnings" (Poshmark's).
+ * BrickLink uses "Buyer Username" for the buyer handle.
+ */
+function looksLikeBrickLinkCsv(headers) {
+  if (!headers) return false;
+  const has = (re) => headers.some(h => re.test(h));
+  return has(/^order\s*id$/i)
+      && has(/date\s*ordered/i)
+      && has(/grand\s*total/i)
+      && !has(/sales\s*record\s*number/i)
+      && !has(/net\s*earnings/i);
+}
+
 // ── Public API ─────────────────────────────────────────────────────────────
 
 /**
@@ -149,8 +204,11 @@ export function sniffCsv(file) {
         }
 
         let kind = null;
-        if      (looksLikeEtsyPaymentsCsv(headers)) kind = 'etsy-payments';
-        else if (looksLikeEtsyDepositsCsv(headers)) kind = 'etsy-deposits';
+        if      (looksLikeEtsyPaymentsCsv(headers))  kind = 'etsy-payments';
+        else if (looksLikeEtsyDepositsCsv(headers))  kind = 'etsy-deposits';
+        else if (looksLikePoshmarkCsv(headers))       kind = 'poshmark-sales';
+        else if (looksLikeEbayCsv(headers))           kind = 'ebay-orders';
+        else if (looksLikeBrickLinkCsv(headers))      kind = 'bricklink-orders';
 
         resolve({ headers, rows, zipIdx, countIdx, dateIdx, confidence, kind });
       },
@@ -220,8 +278,7 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
   for (const file of files) {
     const headers = file.headers;
     const rows    = file.rows;
-    // Match either Etsy Payments column names OR Etsy Sold Orders names,
-    // so the same dashboard works for both export types.
+    // Match column names across Etsy, eBay, Poshmark, and BrickLink exports.
     const idxAny = (...names) => {
       for (const name of names) {
         const i = headers.findIndex(h => h?.toLowerCase() === name.toLowerCase());
@@ -229,19 +286,53 @@ export function aggregatePayments(files, fromDate = null, toDate = null) {
       }
       return -1;
     };
-    const iGross   = idxAny('Gross Amount', 'Order Total', 'Item Total', 'Order Value', 'Amount');
-    const iFees    = idxAny('Fees', 'Card Processing Fees');
-    const iNet     = idxAny('Net Amount', 'Order Net', 'Adjusted Net Order Amount');
-    const iRefund  = idxAny('Refund Amount');
-    const iDate    = idxAny('Order Date', 'Sale Date', 'Date');
-    const iBuyer   = idxAny('Buyer');             // fallback for blank Buyer Name
-    const iBuyerNm = idxAny('Buyer Name', 'Full Name');
-    const iStatus  = idxAny('Status');
-    const iCur     = idxAny('Currency');
-    // Product-level columns (Etsy Sold Order Items CSV)
-    const iItemNm  = idxAny('Item Name', 'Product', 'Title');
-    const iQty     = idxAny('Quantity', 'Qty', 'Number of Items');
-    const iSku     = idxAny('SKU');
+    const iGross   = idxAny(
+      // Etsy
+      'Gross Amount', 'Order Total', 'Item Total', 'Order Value', 'Amount',
+      // eBay (Seller Hub Orders report)
+      'Sale Price', 'Total Price', 'Gross Sales',
+      // Poshmark (confirmed field name)
+      'Order Price',
+      // BrickLink
+      'Grand Total', 'Sub Total',
+    );
+    const iFees    = idxAny(
+      'Fees', 'Card Processing Fees',
+      // eBay
+      'Final Value Fee', 'eBay Fee',
+      // Poshmark (shipping label cost)
+      'Upgraded Shipping Label Fee',
+    );
+    const iNet     = idxAny(
+      'Net Amount', 'Order Net', 'Adjusted Net Order Amount',
+      // Poshmark (confirmed field name)
+      'Net Earnings',
+      'Earnings', 'Seller Proceeds',
+    );
+    const iRefund  = idxAny('Refund Amount', 'Refund', 'Cancelled Amount');
+    const iDate    = idxAny(
+      // Etsy / generic
+      'Order Date', 'Sale Date', 'Date', 'Transaction Date',
+      // eBay Seller Hub
+      'Paid on Date', 'Checkout Date',
+      // BrickLink
+      'Date Ordered',
+    );
+    const iBuyer   = idxAny('Buyer', 'Buyer Username');
+    const iBuyerNm = idxAny('Buyer Name', 'Full Name', 'Ship Name', 'Shipping Recipient');
+    const iStatus  = idxAny('Status', 'Order Status');
+    const iCur     = idxAny('Currency', 'Currency Code');
+    // Product-level columns
+    const iItemNm  = idxAny(
+      'Item Name', 'Item Title', 'Title',
+      // Poshmark
+      'Listing Title',
+      // eBay
+      'Product',
+      'Description',
+    );
+    const iQty     = idxAny('Quantity', 'Qty', 'Number of Items', 'Quantity Sold', 'Total Quantity');
+    const iSku     = idxAny('SKU', 'Custom Label', 'Item Number');
     const iListing = idxAny('Listing ID');
 
     for (const row of rows) {
@@ -394,12 +485,21 @@ export function aggregateZipDetails(files, fromDate = null, toDate = null) {
       }
       return -1;
     };
-    const iCustomer = idxAny('Full Name', 'Ship Name', 'Buyer Name', 'Buyer', 'Customer');
-    const iTotal    = idxAny('Item Total', 'Order Total', 'Order Value', 'Total', 'Gross Amount');
-    const iItemNm   = idxAny('Item Name', 'Product', 'Title');
-    const iSku      = idxAny('SKU', 'Item');
-    const iCity     = idxAny('Ship City', 'City');
-    const iState    = idxAny('Ship State', 'State');
+    const iCustomer = idxAny(
+      'Full Name', 'Ship Name', 'Buyer Name', 'Buyer', 'Customer',
+      'Buyer Username',                         // eBay / Poshmark / BrickLink
+      'Shipping Recipient',
+    );
+    const iTotal    = idxAny(
+      'Item Total', 'Order Total', 'Order Value', 'Total', 'Gross Amount',
+      'Total Price', 'Sale Price',              // eBay
+      'Order Price',                            // Poshmark
+      'Grand Total',                            // BrickLink
+    );
+    const iItemNm   = idxAny('Item Name', 'Item Title', 'Title', 'Listing Title', 'Product', 'Description');
+    const iSku      = idxAny('SKU', 'Custom Label', 'Item Number', 'Item');
+    const iCity     = idxAny('Ship City', 'City', 'Buyer City', 'Shipping City');
+    const iState    = idxAny('Ship State', 'State', 'Buyer State', 'Province', 'Shipping State');
 
     for (const row of rows) {
       if (dateIdx >= 0 && (fromDate || toDate)) {

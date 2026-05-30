@@ -1,7 +1,7 @@
 {
-  "name": "zipmap",
+  "name": "ordermap",
   "private": true,
-  "version": "0.3.56",
+  "version": "0.3.58",
   "type": "module",
   "scripts": {
     "prepare": "node scripts/install-hooks.js",

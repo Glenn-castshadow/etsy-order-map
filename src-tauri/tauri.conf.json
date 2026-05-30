@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "etsy-order-map",
-  "version": "0.3.56",
-  "identifier": "com.castshadow.etsy-order-map",
+  "productName": "StoreCSV_Heatmaps",
+  "version": "0.3.58",
+  "identifier": "com.castshadow.storecsv-heatmaps",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5174",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Etsy Order Map",
+        "title": "StoreCSV Heatmaps",
         "width": 1280,
         "height": 1200,
         "minWidth": 800,
