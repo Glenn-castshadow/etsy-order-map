@@ -1,4 +1,4 @@
-# StoreCSV Heatmaps v0.3.73
+# StoreCSV Heatmaps v0.3.75
 
 A desktop app that visualizes online store sales orders as US ZIP code heatmaps and financial dashboards. Drop in CSV exports from **Etsy, eBay, Poshmark, or BrickLink** — column names are auto-detected — and instantly see where your customers are concentrated and how revenue breaks down over time.
 
