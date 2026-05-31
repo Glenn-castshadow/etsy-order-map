@@ -28,40 +28,45 @@ export default function DateRangeFilter({ min, max, from, to, onChange }) {
 
   const fromDay_ = from ? toDay(from) : minDay;
   const toDay_   = to   ? toDay(to)   : maxDay;
-
   const isFiltered = from || to;
-  const trackRef   = useRef(null);
-  const fromRef    = useRef(null);
-  const toRef      = useRef(null);
 
-  // Synchronously flip z-index on the DOM nodes before the browser decides
-  // which input captures the drag — React setState is too late (async re-render).
-  const handlePointerDown = useCallback(e => {
-    const track = trackRef.current;
-    const fromEl = fromRef.current;
-    const toEl   = toRef.current;
-    if (!track || !fromEl || !toEl) return;
+  const trackRef = useRef(null);
 
-    const { left, width } = track.getBoundingClientRect();
-    const clickPct = (e.clientX - left) / width;
+  // Keep latest values accessible inside pointer-move closures without stale state.
+  const fromDayRef = useRef(fromDay_);
+  const toDayRef   = useRef(toDay_);
+  fromDayRef.current = fromDay_;
+  toDayRef.current   = toDay_;
 
-    const fromPct = (fromDay_ - minDay) / span;
-    const toPct   = (toDay_   - minDay) / span;
+  const dayFromClientX = useCallback(clientX => {
+    const { left, width } = trackRef.current.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (clientX - left) / width));
+    return Math.round(minDay + pct * span);
+  }, [minDay, span]);
 
-    const nearFrom = Math.abs(clickPct - fromPct) <= Math.abs(clickPct - toPct);
-    fromEl.style.zIndex = nearFrom ? '5' : '3';
-    toEl.style.zIndex   = nearFrom ? '3' : '5';
-  }, [fromDay_, toDay_, minDay, span]);
+  const handleThumbDown = useCallback((thumb, e) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-  const handleFrom = useCallback(e => {
-    const v = Math.min(Number(e.target.value), toDay_ - 1);
-    onChange(v === minDay ? '' : fromDay(v), to);
-  }, [toDay_, minDay, to, onChange]);
+    const onMove = ev => {
+      const day = dayFromClientX(ev.clientX);
+      if (thumb === 'from') {
+        const v = Math.max(minDay, Math.min(day, toDayRef.current - 1));
+        onChange(v === minDay ? '' : fromDay(v), to);
+      } else {
+        const v = Math.min(maxDay, Math.max(day, fromDayRef.current + 1));
+        onChange(from, v === maxDay ? '' : fromDay(v));
+      }
+    };
 
-  const handleTo = useCallback(e => {
-    const v = Math.max(Number(e.target.value), fromDay_ + 1);
-    onChange(from, v === maxDay ? '' : fromDay(v));
-  }, [fromDay_, maxDay, from, onChange]);
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, [minDay, maxDay, from, to, onChange, dayFromClientX]);
 
   const leftPct  = ((fromDay_ - minDay) / span) * 100;
   const rightPct = ((toDay_   - minDay) / span) * 100;
@@ -74,43 +79,29 @@ export default function DateRangeFilter({ min, max, from, to, onChange }) {
         <span>{fmtLabel(to   || max)}</span>
       </div>
 
-      {/* Dual-thumb slider */}
-      <div
-        ref={trackRef}
-        className="relative h-5 flex items-center"
-        onPointerDown={handlePointerDown}
-      >
+      {/* Track — no pointer events on the track itself */}
+      <div ref={trackRef} className="relative h-5 flex items-center select-none">
         {/* Track background */}
-        <div className="absolute inset-x-0 h-1 rounded-full bg-slate-600" />
+        <div className="absolute inset-x-0 h-1 rounded-full bg-slate-600 pointer-events-none" />
 
-        {/* Active fill between thumbs */}
+        {/* Active fill */}
         <div
-          className="absolute h-1 rounded-full bg-blue-500"
+          className="absolute h-1 rounded-full bg-blue-500 pointer-events-none"
           style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }}
         />
 
-        {/* From thumb — starts beneath To thumb */}
-        <input
-          ref={fromRef}
-          type="range"
-          min={minDay}
-          max={maxDay}
-          value={fromDay_}
-          onChange={handleFrom}
-          className="range-thumb absolute inset-x-0 w-full appearance-none bg-transparent cursor-pointer"
-          style={{ zIndex: 3 }}
+        {/* From thumb */}
+        <div
+          onPointerDown={e => handleThumbDown('from', e)}
+          className="absolute w-4 h-4 rounded-full bg-blue-500 border-2 border-blue-900 cursor-grab active:cursor-grabbing hover:bg-blue-400 transition-colors"
+          style={{ left: `${leftPct}%`, transform: 'translateX(-50%)', zIndex: 2, touchAction: 'none' }}
         />
 
-        {/* To thumb — starts on top */}
-        <input
-          ref={toRef}
-          type="range"
-          min={minDay}
-          max={maxDay}
-          value={toDay_}
-          onChange={handleTo}
-          className="range-thumb absolute inset-x-0 w-full appearance-none bg-transparent cursor-pointer"
-          style={{ zIndex: 5 }}
+        {/* To thumb */}
+        <div
+          onPointerDown={e => handleThumbDown('to', e)}
+          className="absolute w-4 h-4 rounded-full bg-blue-500 border-2 border-blue-900 cursor-grab active:cursor-grabbing hover:bg-blue-400 transition-colors"
+          style={{ left: `${rightPct}%`, transform: 'translateX(-50%)', zIndex: 2, touchAction: 'none' }}
         />
       </div>
 
