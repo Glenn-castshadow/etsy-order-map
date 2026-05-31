@@ -1,7 +1,7 @@
 {
   "name": "ordermap",
   "private": true,
-  "version": "0.3.69",
+  "version": "0.3.70",
   "type": "module",
   "scripts": {
     "prepare": "node scripts/install-hooks.js",
