@@ -38,9 +38,12 @@ export default function DateRangeFilter({ min, max, from, to, onChange }) {
   fromDayRef.current = fromDay_;
   toDayRef.current   = toDay_;
 
+  // Keep thumbs 8px inset from each edge so they're never clipped.
+  const INSET = 8;
+
   const dayFromClientX = useCallback(clientX => {
     const { left, width } = trackRef.current.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (clientX - left) / width));
+    const pct = Math.max(0, Math.min(1, (clientX - left - INSET) / (width - INSET * 2)));
     return Math.round(minDay + pct * span);
   }, [minDay, span]);
 
@@ -84,24 +87,35 @@ export default function DateRangeFilter({ min, max, from, to, onChange }) {
         {/* Track background */}
         <div className="absolute inset-x-0 h-1 rounded-full bg-slate-600 pointer-events-none" />
 
-        {/* Active fill */}
+        {/* Active fill — inset by INSET px on each side to align with thumb travel */}
         <div
           className="absolute h-1 rounded-full bg-blue-500 pointer-events-none"
-          style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }}
+          style={{
+            left:  `calc(${INSET}px + ${leftPct}%  * (100% - ${INSET * 2}px) / 100%)`,
+            right: `calc(${INSET}px + ${100 - rightPct}% * (100% - ${INSET * 2}px) / 100%)`,
+          }}
         />
 
         {/* From thumb */}
         <div
           onPointerDown={e => handleThumbDown('from', e)}
           className="absolute w-4 h-4 rounded-full bg-blue-500 border-2 border-blue-900 cursor-grab active:cursor-grabbing hover:bg-blue-400 transition-colors"
-          style={{ left: `${leftPct}%`, transform: 'translateX(-50%)', zIndex: 2, touchAction: 'none' }}
+          style={{
+            left: `calc(${INSET}px + ${leftPct}% * (100% - ${INSET * 2}px) / 100%)`,
+            transform: 'translateX(-50%)',
+            zIndex: 2, touchAction: 'none',
+          }}
         />
 
         {/* To thumb */}
         <div
           onPointerDown={e => handleThumbDown('to', e)}
           className="absolute w-4 h-4 rounded-full bg-blue-500 border-2 border-blue-900 cursor-grab active:cursor-grabbing hover:bg-blue-400 transition-colors"
-          style={{ left: `${rightPct}%`, transform: 'translateX(-50%)', zIndex: 2, touchAction: 'none' }}
+          style={{
+            left: `calc(${INSET}px + ${rightPct}% * (100% - ${INSET * 2}px) / 100%)`,
+            transform: 'translateX(-50%)',
+            zIndex: 2, touchAction: 'none',
+          }}
         />
       </div>
 

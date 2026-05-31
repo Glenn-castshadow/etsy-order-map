@@ -1,6 +1,6 @@
 [package]
 name = "storecsv-heatmaps"
-version = "0.3.70"
+version = "0.3.71"
 description = "Visualize sales orders from Etsy, eBay, Poshmark, and BrickLink as ZIP code heatmaps"
 authors = ["Glenn-castshadow"]
 license = "MIT"
