@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
@@ -103,6 +103,12 @@ export default function App() {
     allDates.sort();
     return { min: allDates[0], max: allDates[allDates.length - 1] };
   }, [allFiles]);
+
+  // Reset the selected range whenever the data span changes (new file added/removed)
+  // so the filter never silently clips data the user just loaded.
+  useEffect(() => {
+    setSelectedRange({ from: '', to: '' });
+  }, [dateRange?.min, dateRange?.max]);
 
   // Combined zip→count across all order files, with date filter applied
   // per-file so each file uses its own dateIdx mapping.
